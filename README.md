@@ -11,15 +11,19 @@ and sells bags to cafés.
 
 ## Status
 
-Unit 1, the skeleton, is built. `docker compose up -d` starts Postgres, Neo4j and Cube on the
-development ports, and a smoke command checks that each one answers. The design is in
+Units 1 and 2 are built. `docker compose up -d` starts Postgres, Neo4j and Cube on the
+development ports, and a smoke command checks that each one answers. A seeded generator
+produces the Cumbre Coffee dataset (15 cooperatives, 600 lots, 20,000 orders and 60,000 order
+lines), and `python -m semantic_lab.commands.seed` loads it into Postgres along with the four
+SKOS taxonomies in `ontology/taxonomy/`. Twelve questions in `questions/` (eight for
+development, four held out) each carry reference SQL and a stored answer, and
+`python -m semantic_lab.commands.questions` checks them against the database. The design is in
 [`docs/superpowers/specs/2026-11-16-semantic-lab-design.md`](docs/superpowers/specs/2026-11-16-semantic-lab-design.md),
 and what was measured against the running services is in
 [`docs/superpowers/specs/measured-facts.md`](docs/superpowers/specs/measured-facts.md).
 
-Six units remain, from "Order of work" in the design: the domain and seed (2), the taxonomy and
-ontology (3), the knowledge graph (4), the semantic layer (5), the agent (6) and the
-evaluation (7).
+Five units remain, from "Order of work" in the design: the ontology (3), the knowledge graph
+(4), the semantic layer (5), the agent (6) and the evaluation (7).
 
 ## Licence
 

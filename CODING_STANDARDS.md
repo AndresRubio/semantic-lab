@@ -8,17 +8,27 @@ Each layer of the design's Architecture section is one package under `src/semant
 `domain`, `seed`, `rdf`, `graph`, `semantic`, `agent`, `evals` and `commands`. A package
 holds one layer, so a change to one store or one tool has a known place.
 
-The import directions that hold today:
+The import directions that hold today, enforced by `tests/guards/test_layers.py`:
 
-- `domain/` imports only the standard library. It is the vocabulary every other layer shares,
-  and a dependency in it would pull that dependency into all of them.
-- `commands/` may import any layer, and nothing imports `commands/`. A command is an entry
-  point that wires layers together, so the layers must not depend on it.
+| Layer | May import from our code | Reason |
+|---|---|---|
+| `domain/` | nothing, and only the standard library from outside | It is the vocabulary every other layer shares, and a dependency in it would pull that dependency into all of them. |
+| `rdf/` | `domain/` | It reads Turtle into the domain's types. It has no reason to know the generator or a store. |
+| `seed/` | `domain/` | The generator builds the domain's records and is pure, so it must not read a file, a store or a taxonomy loader. It receives a `Taxonomy` as an argument. |
+| `evals/` | `domain/` | Questions and reference queries are checked against the domain's types, not against how the seed or a loader produced them. |
+| `semantic/` | nothing of ours | The Cube client is a boundary to one service and holds no domain knowledge. |
+| `commands/` | any layer | A command is an entry point that wires layers together. |
 
-Two modules sit at the top level beside the layer packages: `config.py` and `probes.py`.
-`commands/` and the tests import them. The layer packages do not import `probes`. `probes.cube`
-asks Cube's metadata endpoint itself today. Unit 5 adds the Cube client to `semantic/` and
-decides whether the probe goes through that client.
+Nothing imports `commands/`, because the layers must not depend on an entry point. `graph/` and
+`agent/` have no line yet: the unit that adds each one settles which packages it imports,
+writes that down here and adds it to the test.
+
+Three modules sit at the top level beside the layer packages: `config.py`, `probes.py` and
+`redaction.py`. `commands/` and the tests import them. The layer packages do not import
+`probes`. `probes.cube` asks Cube's metadata endpoint itself today. Unit 5 adds the Cube
+client to `semantic/` and decides whether the probe goes through that client. `redaction.py`
+turns an exception into one line that holds no credential, and `probes.py` and the two
+commands that open a Postgres connection share it.
 
 The design settles no other direction. The unit that adds a package settles which packages it
 imports, writes that down here and adds a test for it.
@@ -64,6 +74,6 @@ stopped being needed.
 - No ORM, no CLI framework, no async and no config system. The lab teaches what these
   would hide, and the code stays short enough to show in an interview.
 - A new runtime dependency needs the owner's yes. The runtime dependencies today are `httpx`,
-  `psycopg[binary]` and `neo4j`. Each one is a cost the owner pays on every upgrade.
+  `psycopg[binary]`, `neo4j` and `rdflib`. Each one is a cost the owner pays on every upgrade.
 - Names are English, because the repository will be shown to interviewers.
 - `ruff check` and `mypy` pass. There is no formatter.

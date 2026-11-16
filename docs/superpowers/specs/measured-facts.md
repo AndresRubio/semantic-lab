@@ -68,3 +68,54 @@ chose (`revenue`, `origin_country`) are its own guesses, since the test's tool d
 no members. Unit 6 has to decide whether to
 parse tool calls out of `content`, to try `gemma4`, or to change the tool description. The
 test stays as written until then.
+
+## The seed (unit 2)
+
+Measured on 2026-11-16 on the same Mac, on the test stack (`semantic-lab-test`, ports 5441,
+7475, 7688 and 4001), never the development stack. The stack was started with
+`docker compose -p semantic-lab-test -f compose.yaml --env-file tests/stack.env up -d`. The
+smoke command printed three `ok` lines on its first run, and the seed ran once against the
+fresh Postgres.
+
+- Seed time: `time uv run --env-file tests/stack.env python -m semantic_lab.commands.seed`
+  took 1.99 s of wall time (0.66 s of user time). It generates the dataset, drops and creates
+  the 17 tables and copies the rows in one transaction.
+- Database size: `select pg_size_pretty(pg_database_size(current_database()))`, run through
+  `exec -T postgres psql` after the seed, printed `19 MB`.
+- Postgres memory: `docker stats --no-stream` right after the seed showed the Postgres
+  container at 36.59 MiB, against 48 MiB in the table above with no data loaded. The two
+  readings were taken on different stacks and moments, so they say only that loading the seed
+  did not make Postgres grow past tens of megabytes. In the same reading Neo4j was at
+  1.329 GiB and Cube at 163 MiB.
+
+Row counts of the dataset for the default seed (20240101), read with `generate(taxonomy,
+DEFAULT_SEED)` and equal to the seed command's output:
+
+| Table | Rows |
+|---|---|
+| `cooperative` | 15 |
+| `cooperative_certification` | 12 |
+| `farm` | 120 |
+| `shipment` | 80 |
+| `lot` | 600 |
+| `lot_farm` | 1,218 |
+| `product` | 40 |
+| `product_flavour` | 80 |
+| `roast_batch` | 3,000 |
+| `roast_batch_lot` | 4,503 |
+| `customer` | 300 |
+| `sales_order` | 20,000 |
+| `order_line` | 60,000 |
+| `quality_incident` | 2 |
+| `concept` | 70 |
+| `concept_alt_label` | 18 |
+| `concept_closure` | 162 |
+
+The pinned sha256 digest of the default seed's rows, `PINNED` in `tests/seed/test_generate.py`,
+is `90e044ff8ada633751410fc1a47fa94a40c3c0a89aa1405b59534aff2e843f95`.
+
+Revenue for 2025 totals 9,138,117.49 euros whichever way it is cut. The three stored answers
+`questions/expected/metric-revenue-by-country-2025.json` (six countries),
+`hierarchy-revenue-by-continent-2025.json` (three continents) and
+`metric-revenue-by-quarter-2025.json` (four quarters) each sum to that figure when added with
+`Decimal`. The sums were checked by hand-run Python, not by the questions command.
