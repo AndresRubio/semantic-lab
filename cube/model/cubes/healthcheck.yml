@@ -1,0 +1,8 @@
+cubes:
+  - name: healthcheck
+    sql: "select 1 as n"
+    measures:
+      - name: rows
+        type: count
+        meta:
+          iri: "urn:semantic-lab:healthcheck"

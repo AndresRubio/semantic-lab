@@ -1,0 +1,57 @@
+name: semantic-lab
+
+services:
+  postgres:
+    image: postgres:17.12
+    environment:
+      POSTGRES_USER: ${SEMANTIC_LAB_POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${SEMANTIC_LAB_POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${SEMANTIC_LAB_POSTGRES_DB:?}
+    ports:
+      - "127.0.0.1:${SEMANTIC_LAB_POSTGRES_PORT:?}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  neo4j:
+    image: neo4j:2026.10.2-community
+    environment:
+      NEO4J_AUTH: ${SEMANTIC_LAB_NEO4J_USER:?}/${SEMANTIC_LAB_NEO4J_PASSWORD:?}
+      NEO4J_server_memory_heap_initial__size: 1G
+      NEO4J_server_memory_heap_max__size: 1G
+      NEO4J_server_memory_pagecache_size: 512M
+      NEO4J_dbms_security_allow__csv__import__from__file__urls: "false"
+    ports:
+      - "127.0.0.1:${SEMANTIC_LAB_NEO4J_HTTP_PORT:?}:7474"
+      - "127.0.0.1:${SEMANTIC_LAB_NEO4J_BOLT_PORT:?}:7687"
+    volumes:
+      - neo4j-data:/data
+
+  cube:
+    image: cubejs/cube:v1.8.26
+    environment:
+      CUBEJS_DB_TYPE: postgres
+      CUBEJS_DB_HOST: postgres
+      CUBEJS_DB_PORT: "5432"
+      CUBEJS_DB_NAME: ${SEMANTIC_LAB_POSTGRES_DB:?}
+      CUBEJS_DB_USER: ${SEMANTIC_LAB_POSTGRES_USER:?}
+      CUBEJS_DB_PASS: ${SEMANTIC_LAB_POSTGRES_PASSWORD:?}
+      CUBEJS_API_SECRET: ${SEMANTIC_LAB_CUBE_SECRET:?}
+      CUBEJS_DEV_MODE: ${SEMANTIC_LAB_CUBE_DEV_MODE:?}
+      # Production mode defaults to Cube Store, which this stack does not run.
+      CUBEJS_CACHE_AND_QUEUE_DRIVER: memory
+    ports:
+      - "127.0.0.1:${SEMANTIC_LAB_CUBE_PORT:?}:4000"
+    volumes:
+      - ./cube/model:/cube/conf/model:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  neo4j-data:
