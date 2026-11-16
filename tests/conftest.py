@@ -5,10 +5,13 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import httpx
+import psycopg
 import pytest
 
 from semantic_lab import config, probes
 from semantic_lab.config import Settings
+from semantic_lab.rdf.taxonomy import load_taxonomy
+from semantic_lab.seed import generate, load
 from tests.support import envfile
 from tests.support.compose_env import without_lab_settings
 
@@ -71,3 +74,13 @@ def stack() -> Iterator[Settings]:
         yield settings
     finally:
         _compose("down", "-v")
+
+
+@pytest.fixture(scope="session")
+def seeded(stack: Settings) -> Settings:
+    """The test stack's Postgres filled with the repository's taxonomies and the default seed."""
+    taxonomy = load_taxonomy(ROOT / "ontology" / "taxonomy")
+    dataset = generate.generate(taxonomy, generate.DEFAULT_SEED)
+    with psycopg.connect(stack.postgres_dsn) as connection:
+        load.rebuild(connection, taxonomy, dataset)
+    return stack
