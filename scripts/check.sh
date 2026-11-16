@@ -2,9 +2,10 @@
 # Runs the offline checks of .github/workflows/checks.yml, for work not yet pushed.
 # Every step runs even after one fails, and the failed ones are listed last.
 #
-# Not covered, because it needs Docker, a database or the network:
-#   - the `db` tests, which CI runs without `-n`. Here only the offline layer runs: not db, not model.
-#   - `uv sync --locked` is replaced by `uv run --locked --extra dev`, which also fails on a stale uv.lock.
+# Not covered: the `db` tests, which need Docker and run in the `db` job of CI, and the
+# `model` tests, which need Ollama and never run in CI.
+# Replaced: `uv sync --locked` becomes `uv run --locked --extra dev`, which also fails on a
+# stale uv.lock.
 #
 # A pass is recorded against the hash of the working tree, in the git directory, so a second
 # run on an unchanged tree ends at once. --force runs the checks anyway.

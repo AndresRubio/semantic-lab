@@ -63,8 +63,8 @@ cube) and ollama (with the model present).
 {"role": "assistant", "content": "{\"name\": \"cube_query\", \"arguments\": {\"dimensions\": [\"origin_country\"], \"measures\": [\"revenue\"], \"time\": {\"dimension\": \"quarter\", \"granularity\": \"quarter\", \"date_range\": [\"2025\"]}}}"}
 ```
 
-The content is a call with a sensible shape, but it is not the structured call the agent loop
-expects. The invented member names (`revenue`, `origin_country`) are also not Cube members,
-which is expected before any tool description names them. Unit 6 has to decide whether to
+The agent loop reads only `tool_calls`, so this reply counts as no call. The member names it
+chose (`revenue`, `origin_country`) are its own guesses, since the test's tool description names
+no members. Unit 6 has to decide whether to
 parse tool calls out of `content`, to try `gemma4`, or to change the tool description. The
 test stays as written until then.

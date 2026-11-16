@@ -1,3 +1,4 @@
+import os
 import subprocess
 import time
 from collections.abc import Iterator
@@ -9,6 +10,7 @@ import pytest
 from semantic_lab import config, probes
 from semantic_lab.config import Settings
 from tests.support import envfile
+from tests.support.compose_env import without_lab_settings
 
 ROOT = Path(__file__).resolve().parent.parent
 STACK_ENV = ROOT / "tests" / "stack.env"
@@ -17,9 +19,22 @@ READY_TIMEOUT_SECONDS = 180
 
 
 def _compose(*args: str) -> subprocess.CompletedProcess[str]:
+    # -f stops a COMPOSE_FILE in the shell from swapping the file. The environment loses its
+    # SEMANTIC_LAB_* keys so that tests/stack.env alone decides the ports and credentials.
     return subprocess.run(
-        ["docker", "compose", "-p", PROJECT, "--env-file", str(STACK_ENV), *args],
+        [
+            "docker",
+            "compose",
+            "-p",
+            PROJECT,
+            "-f",
+            "compose.yaml",
+            "--env-file",
+            str(STACK_ENV),
+            *args,
+        ],
         cwd=ROOT,
+        env=without_lab_settings(os.environ),
         capture_output=True,
         text=True,
         check=False,
@@ -28,11 +43,7 @@ def _compose(*args: str) -> subprocess.CompletedProcess[str]:
 
 def _failed_checks(settings: Settings) -> list[probes.Check]:
     with httpx.Client(timeout=5.0) as client:
-        checks = [
-            probes.postgres(settings.postgres_dsn),
-            probes.neo4j(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password),
-            probes.cube(settings.cube_url, settings.cube_secret, client, int(time.time())),
-        ]
+        checks = probes.run(settings, client, int(time.time()), with_model=False)
     return [check for check in checks if not check.ok]
 
 

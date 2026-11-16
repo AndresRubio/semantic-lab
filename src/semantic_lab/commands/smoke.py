@@ -30,13 +30,7 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
         err.write(f"missing setting: {missing.name}\n")
         return 2
     with httpx.Client(timeout=5.0) as client:
-        checks = [
-            probes.postgres(settings.postgres_dsn),
-            probes.neo4j(settings.neo4j_uri, settings.neo4j_user, settings.neo4j_password),
-            probes.cube(settings.cube_url, settings.cube_secret, client, int(time.time())),
-        ]
-        if not args.no_model:
-            checks.append(probes.ollama(settings.ollama_url, settings.model, client))
+        checks = probes.run(settings, client, int(time.time()), with_model=not args.no_model)
     return report(checks, out)
 
 

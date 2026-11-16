@@ -39,3 +39,11 @@ def test_a_missing_or_empty_setting_is_named(name: str) -> None:
         with pytest.raises(config.MissingSetting) as caught:
             config.load(broken)
         assert caught.value.name == name
+
+
+def test_the_repr_holds_no_secret() -> None:
+    settings = config.load(envfile.read(ROOT / ".env.example"))
+    shown = repr(settings)
+    for secret in (settings.postgres_dsn, settings.neo4j_password, settings.cube_secret):
+        assert secret not in shown
+    assert settings.neo4j_user in shown

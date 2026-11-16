@@ -43,3 +43,4 @@ select = ["E4", "E7", "E9", "F", "W", "B", "RUF100"]
 files = ["src", "tests"]
 warn_unused_ignores = true
 warn_redundant_casts = true
+check_untyped_defs = true

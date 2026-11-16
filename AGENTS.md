@@ -11,7 +11,7 @@ before you write code.
 ## Commands
 
 Run from the repository root. `[writes]` means the command creates or changes files, containers
-or volumes. `[read-only]` means it leaves the repository and the Docker state as they were.
+or volumes. `[read-only]` means it leaves the working tree and the Docker state as they were.
 
 - `cp .env.example .env` [writes]: the owner's first step. `.env` is ignored by git.
 - `docker compose up -d` [writes]: starts Postgres, Neo4j and Cube on the development ports
@@ -24,7 +24,10 @@ or volumes. `[read-only]` means it leaves the repository and the Docker state as
 - `uv run pytest -n auto -m "not db and not model"` [read-only]: the offline suite.
 - `uv run pytest -m db` [writes]: starts its own stack under the project name
   `semantic-lab-test` on ports 5441, 7475, 7688 and 4001, and removes it with its volumes
-  when it ends. It reads `tests/stack.env` and never needs `.env`. Do not add `-n`.
+  when it ends. It reads `tests/stack.env` and never needs `.env`. Do not add `-n`. Only one `db`
+  run can happen on a machine at a time: every checkout uses the project name
+  `semantic-lab-test` and the same ports, so a second run's teardown would remove the first
+  run's stack.
 - `uv run --env-file .env pytest -m model -q` [read-only]: asks the local model for a tool call.
   It needs Ollama running with the model named in `.env`, and no Docker stack.
 - `docker compose down` [writes]: stops the development stack and keeps its data.
@@ -53,8 +56,10 @@ ontology/          planned, unit 3
 questions/         planned, unit 2
 ```
 
-The `graph/` directory under `tests/` holds the Neo4j read-only check, which tests the
-driver and the container until `src/semantic_lab/graph/` exists.
+A test for a planned layer sits in that layer's future directory. `tests/graph/` holds the
+Neo4j read-only check, which tests the driver and the container until `src/semantic_lab/graph/`
+exists, and `tests/agent/` holds the model tool-call check until `src/semantic_lab/agent/`
+exists.
 
 ## Test ladder
 
@@ -75,5 +80,4 @@ Other containers on this Mac, such as boe-agent's on 5433 and 5434, are not ours
 
 - Python 3.13, managed with `uv`. Never `pip`.
 - Every address, port and credential comes from the environment. No default lives in code.
-- Do not read or print `.env`.
 - Commit on a branch, one plain sentence as the message. Do not use `--no-verify`.

@@ -1,7 +1,7 @@
 """The lab's settings. Every value comes from the environment; none has a default."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class MissingSetting(Exception):
@@ -12,12 +12,12 @@ class MissingSetting(Exception):
 
 @dataclass(frozen=True)
 class Settings:
-    postgres_dsn: str
+    postgres_dsn: str = field(repr=False)
     neo4j_uri: str
     neo4j_user: str
-    neo4j_password: str
+    neo4j_password: str = field(repr=False)
     cube_url: str
-    cube_secret: str
+    cube_secret: str = field(repr=False)
     ollama_url: str
     model: str
 
