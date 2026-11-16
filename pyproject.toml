@@ -9,6 +9,7 @@ dependencies = [
     "httpx",
     "psycopg[binary]",
     "neo4j",
+    "rdflib>=7.6.0",
 ]
 
 [project.optional-dependencies]

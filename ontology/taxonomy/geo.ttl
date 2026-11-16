@@ -1,0 +1,208 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix geo: <https://semantic-lab.example/taxonomy/geo#> .
+
+<https://semantic-lab.example/taxonomy/geo> a skos:ConceptScheme ;
+    skos:notation "geo" ;
+    skos:prefLabel "Geography"@en, "Geografía"@es .
+
+geo:africa a skos:Concept ;
+    skos:notation "geo.africa" ;
+    skos:prefLabel "Africa"@en, "África"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:ethiopia a skos:Concept ;
+    skos:notation "geo.ethiopia" ;
+    skos:prefLabel "Ethiopia"@en, "Etiopía"@es ;
+    skos:broader geo:africa ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:yirgacheffe a skos:Concept ;
+    skos:notation "geo.yirgacheffe" ;
+    skos:prefLabel "Yirgacheffe"@en, "Yirgacheffe"@es ;
+    skos:broader geo:ethiopia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:sidama a skos:Concept ;
+    skos:notation "geo.sidama" ;
+    skos:prefLabel "Sidama"@en, "Sidama"@es ;
+    skos:altLabel "Sidamo"@en ;
+    skos:broader geo:ethiopia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:guji a skos:Concept ;
+    skos:notation "geo.guji" ;
+    skos:prefLabel "Guji"@en, "Guji"@es ;
+    skos:broader geo:ethiopia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:harrar a skos:Concept ;
+    skos:notation "geo.harrar" ;
+    skos:prefLabel "Harrar"@en, "Harrar"@es ;
+    skos:altLabel "Harar"@en ;
+    skos:broader geo:ethiopia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:kenya a skos:Concept ;
+    skos:notation "geo.kenya" ;
+    skos:prefLabel "Kenya"@en, "Kenia"@es ;
+    skos:broader geo:africa ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:nyeri a skos:Concept ;
+    skos:notation "geo.nyeri" ;
+    skos:prefLabel "Nyeri"@en, "Nyeri"@es ;
+    skos:broader geo:kenya ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:kirinyaga a skos:Concept ;
+    skos:notation "geo.kirinyaga" ;
+    skos:prefLabel "Kirinyaga"@en, "Kirinyaga"@es ;
+    skos:broader geo:kenya ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:kiambu a skos:Concept ;
+    skos:notation "geo.kiambu" ;
+    skos:prefLabel "Kiambu"@en, "Kiambu"@es ;
+    skos:broader geo:kenya ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:embu a skos:Concept ;
+    skos:notation "geo.embu" ;
+    skos:prefLabel "Embu"@en, "Embu"@es ;
+    skos:broader geo:kenya ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:south-america a skos:Concept ;
+    skos:notation "geo.south-america" ;
+    skos:prefLabel "South America"@en, "Sudamérica"@es ;
+    skos:altLabel "América del Sur"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:colombia a skos:Concept ;
+    skos:notation "geo.colombia" ;
+    skos:prefLabel "Colombia"@en, "Colombia"@es ;
+    skos:broader geo:south-america ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:huila a skos:Concept ;
+    skos:notation "geo.huila" ;
+    skos:prefLabel "Huila"@en, "Huila"@es ;
+    skos:broader geo:colombia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:narino a skos:Concept ;
+    skos:notation "geo.narino" ;
+    skos:prefLabel "Nariño"@en, "Nariño"@es ;
+    skos:broader geo:colombia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:cauca a skos:Concept ;
+    skos:notation "geo.cauca" ;
+    skos:prefLabel "Cauca"@en, "Cauca"@es ;
+    skos:broader geo:colombia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:tolima a skos:Concept ;
+    skos:notation "geo.tolima" ;
+    skos:prefLabel "Tolima"@en, "Tolima"@es ;
+    skos:broader geo:colombia ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:peru a skos:Concept ;
+    skos:notation "geo.peru" ;
+    skos:prefLabel "Peru"@en, "Perú"@es ;
+    skos:broader geo:south-america ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:cajamarca a skos:Concept ;
+    skos:notation "geo.cajamarca" ;
+    skos:prefLabel "Cajamarca"@en, "Cajamarca"@es ;
+    skos:broader geo:peru ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:cusco a skos:Concept ;
+    skos:notation "geo.cusco" ;
+    skos:prefLabel "Cusco"@en, "Cusco"@es ;
+    skos:altLabel "Cuzco"@en ;
+    skos:broader geo:peru ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:junin a skos:Concept ;
+    skos:notation "geo.junin" ;
+    skos:prefLabel "Junín"@en, "Junín"@es ;
+    skos:broader geo:peru ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:san-martin a skos:Concept ;
+    skos:notation "geo.san-martin" ;
+    skos:prefLabel "San Martín"@en, "San Martín"@es ;
+    skos:broader geo:peru ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:central-america a skos:Concept ;
+    skos:notation "geo.central-america" ;
+    skos:prefLabel "Central America"@en, "Centroamérica"@es ;
+    skos:altLabel "América Central"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:guatemala a skos:Concept ;
+    skos:notation "geo.guatemala" ;
+    skos:prefLabel "Guatemala"@en, "Guatemala"@es ;
+    skos:broader geo:central-america ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:antigua a skos:Concept ;
+    skos:notation "geo.antigua" ;
+    skos:prefLabel "Antigua"@en, "Antigua"@es ;
+    skos:altLabel "Antigua Guatemala"@es ;
+    skos:broader geo:guatemala ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:huehuetenango a skos:Concept ;
+    skos:notation "geo.huehuetenango" ;
+    skos:prefLabel "Huehuetenango"@en, "Huehuetenango"@es ;
+    skos:broader geo:guatemala ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:atitlan a skos:Concept ;
+    skos:notation "geo.atitlan" ;
+    skos:prefLabel "Atitlán"@en, "Atitlán"@es ;
+    skos:altLabel "Lake Atitlán"@en ;
+    skos:broader geo:guatemala ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:coban a skos:Concept ;
+    skos:notation "geo.coban" ;
+    skos:prefLabel "Cobán"@en, "Cobán"@es ;
+    skos:broader geo:guatemala ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:honduras a skos:Concept ;
+    skos:notation "geo.honduras" ;
+    skos:prefLabel "Honduras"@en, "Honduras"@es ;
+    skos:broader geo:central-america ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:copan a skos:Concept ;
+    skos:notation "geo.copan" ;
+    skos:prefLabel "Copán"@en, "Copán"@es ;
+    skos:broader geo:honduras ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:marcala a skos:Concept ;
+    skos:notation "geo.marcala" ;
+    skos:prefLabel "Marcala"@en, "Marcala"@es ;
+    skos:broader geo:honduras ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:santa-barbara a skos:Concept ;
+    skos:notation "geo.santa-barbara" ;
+    skos:prefLabel "Santa Bárbara"@en, "Santa Bárbara"@es ;
+    skos:broader geo:honduras ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
+
+geo:el-paraiso a skos:Concept ;
+    skos:notation "geo.el-paraiso" ;
+    skos:prefLabel "El Paraíso"@en, "El Paraíso"@es ;
+    skos:broader geo:honduras ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/geo> .
