@@ -3,6 +3,7 @@
 import random
 from collections import defaultdict
 
+from semantic_lab.domain.errors import GenerationError
 from semantic_lab.seed import planted
 from semantic_lab.seed.batches import Batches, recalled_batches
 from semantic_lab.seed.orders import Draft, Drafted
@@ -14,9 +15,11 @@ def reach_recalled(drafted: Drafted, batches: Batches, rng: random.Random) -> No
     """Redirect lines to the batches of each recalled lot, one line for each customer reached.
 
     A line is chosen only when its product is the batch's product and it was ordered after the
-    batch was roasted and no later than the recall. Each batch gets at least one line, and no
-    customer is counted twice for a lot, so the number of customers a lot reaches is the target
-    drawn here.
+    batch was roasted and no later than the recall. The loop visits the lot's batches in turn and
+    gives each at most one new customer per pass, so a lot's batches share the target between
+    them and a batch may get none. No customer is counted twice for a lot, so the number of
+    customers a lot reaches is the target drawn here. A seed with too few matching orders raises
+    `GenerationError`.
     """
     by_code = {b.code: b for b in batches.roast_batches}
     lines_of_product: dict[str, list[Draft]] = defaultdict(list)
@@ -45,4 +48,4 @@ def reach_recalled(drafted: Drafted, batches: Batches, rng: random.Random) -> No
                     reached.add(line.customer_code)
                     progressed = True
             if not progressed:
-                raise ValueError(f"too few orders to reach {target} customers for lot {lot}")
+                raise GenerationError(f"too few orders to reach {target} customers for lot {lot}")

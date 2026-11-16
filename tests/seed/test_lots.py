@@ -1,9 +1,10 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
 
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import planted
+from semantic_lab.seed.lots import PROCESS_WEIGHTS
 from semantic_lab.seed.supply import Supply
 from tests.support.seed import EARLY_END, lot_arrivals, lot_countries
 
@@ -83,3 +84,28 @@ def test_the_lapsed_cooperative_harvests_before_and_after_its_certificate_ends(
     after = [h for h in harvests if h > planted.LAPSE_DATE]
     assert len(before) >= 5
     assert len(after) >= 5
+
+
+HONEY_FAMILY = {
+    "process.honey",
+    "process.yellow-honey",
+    "process.red-honey",
+    "process.black-honey",
+}
+
+
+def test_every_process_has_a_weight_and_no_weight_names_a_missing_process(
+    taxonomy: Taxonomy,
+) -> None:
+    assert set(PROCESS_WEIGHTS) == {c.key for c in taxonomy.in_scheme("process")}
+
+
+def test_washed_is_the_most_common_process(supply: Supply) -> None:
+    counts = Counter(lot.process_key for lot in supply.lots)
+    assert len(supply.lots) == 600
+    assert counts.most_common(1)[0][0] == "process.washed"
+
+
+def test_the_honey_family_holds_between_15_and_40_percent_of_the_lots(supply: Supply) -> None:
+    honey = sum(1 for lot in supply.lots if lot.process_key in HONEY_FAMILY)
+    assert 0.15 <= honey / len(supply.lots) <= 0.40

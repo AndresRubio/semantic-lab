@@ -7,11 +7,12 @@ from decimal import Decimal
 
 from semantic_lab.domain.records import OrderLine, Product
 from semantic_lab.domain.taxonomy import Taxonomy
+from semantic_lab.seed.generate import DEFAULT_SEED
 from semantic_lab.seed.sales import Sales
 from semantic_lab.seed.supply import Supply
 
 # Planted facts hold for any seed, so every test of the generator runs against each of these.
-SEEDS = (20261116, 1, 7, 99)
+SEEDS = (DEFAULT_SEED, 1, 7, 99)
 EARLY_END = date(2023, 12, 31)
 ONE_LOT_CATEGORIES = ("category.single-origin", "category.microlot", "category.decaf")
 BLEND_CATEGORIES = ("category.blend", "category.espresso-blend", "category.filter-blend")

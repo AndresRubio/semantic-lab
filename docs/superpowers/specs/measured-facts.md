@@ -75,10 +75,11 @@ Measured on 2026-11-16 on the same Mac, on the test stack (`semantic-lab-test`, 
 7475, 7688 and 4001), never the development stack. The stack was started with
 `docker compose -p semantic-lab-test -f compose.yaml --env-file tests/stack.env up -d`. The
 smoke command printed three `ok` lines on its first run, and the seed ran once against the
-fresh Postgres.
+fresh Postgres. The numbers below were measured again after the processing methods were
+weighted (washed 50 of 100), the same day.
 
 - Seed time: `time uv run --env-file tests/stack.env python -m semantic_lab.commands.seed`
-  took 1.99 s of wall time (0.66 s of user time). It generates the dataset, drops and creates
+  took 1.98 s of wall time (0.66 s of user time). It generates the dataset, drops and creates
   the 17 tables and copies the rows in one transaction.
 - Database size: `select pg_size_pretty(pg_database_size(current_database()))`, run through
   `exec -T postgres psql` after the seed, printed `19 MB`.
@@ -98,11 +99,11 @@ DEFAULT_SEED)` and equal to the seed command's output:
 | `farm` | 120 |
 | `shipment` | 80 |
 | `lot` | 600 |
-| `lot_farm` | 1,218 |
+| `lot_farm` | 1,213 |
 | `product` | 40 |
-| `product_flavour` | 80 |
+| `product_flavour` | 81 |
 | `roast_batch` | 3,000 |
-| `roast_batch_lot` | 4,503 |
+| `roast_batch_lot` | 4,564 |
 | `customer` | 300 |
 | `sales_order` | 20,000 |
 | `order_line` | 60,000 |
@@ -112,9 +113,9 @@ DEFAULT_SEED)` and equal to the seed command's output:
 | `concept_closure` | 162 |
 
 The pinned sha256 digest of the default seed's rows, `PINNED` in `tests/seed/test_generate.py`,
-is `90e044ff8ada633751410fc1a47fa94a40c3c0a89aa1405b59534aff2e843f95`.
+is `6059e29ee1743b17453a0eaf3aa1967740c0626184ab93a566bc17321e130daf`.
 
-Revenue for 2025 totals 9,138,117.49 euros whichever way it is cut. The three stored answers
+Revenue for 2025 totals 9,407,452.44 euros whichever way it is cut. The three stored answers
 `questions/expected/metric-revenue-by-country-2025.json` (six countries),
 `hierarchy-revenue-by-continent-2025.json` (three continents) and
 `metric-revenue-by-quarter-2025.json` (four quarters) each sum to that figure when added with

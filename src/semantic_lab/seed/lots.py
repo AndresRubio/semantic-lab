@@ -9,6 +9,7 @@ import random
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from semantic_lab.domain.errors import GenerationError
 from semantic_lab.domain.records import Cooperative, Lot, LotFarm, Shipment
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import planted
@@ -27,6 +28,18 @@ MIN_LOTS_PER_SHIPMENT = 6
 EARLY_SHIPMENTS_PER_COUNTRY = 2
 # A lot is harvested this many days before its shipment sails, at the earliest and the latest.
 HARVEST_LEAD_DAYS = (5, 45)
+
+# How often each processing method is drawn, as integer weights keyed by concept key. Washed is
+# the most common method and the honey family together holds about a quarter of the lots.
+PROCESS_WEIGHTS = {
+    "process.washed": 50,
+    "process.natural": 18,
+    "process.anaerobic-natural": 5,
+    "process.honey": 9,
+    "process.yellow-honey": 7,
+    "process.red-honey": 6,
+    "process.black-honey": 5,
+}
 
 POOL_COUNTRY = "geo.ethiopia"
 POOL_SIZE = 12
@@ -63,7 +76,8 @@ def generate_lots(
     cooperatives: tuple[Cooperative, ...],
     rng: random.Random,
 ) -> tuple[tuple[Lot, ...], tuple[LotFarm, ...]]:
-    processes = [c.key for c in taxonomy.in_scheme("process")]
+    processes = sorted(c.key for c in taxonomy.in_scheme("process"))
+    process_weights = [PROCESS_WEIGHTS[key] for key in processes]
     lots = []
     links = []
     for index, spec in enumerate(_lot_specs(world, cooperatives, rng)):
@@ -78,7 +92,7 @@ def generate_lots(
                 code=code,
                 cooperative_code=spec.cooperative.code,
                 shipment_code=spec.shipment.code,
-                process_key=rng.choice(processes),
+                process_key=rng.choices(processes, weights=process_weights)[0],
                 variety=rng.choice(VARIETIES),
                 harvested_on=random_date(rng, first, last),
                 weight_kg=decimal_from_hundredths(rng.randint(60000, 300000)),
@@ -109,7 +123,7 @@ def _cover_then_sample(
     size = MAX_FARMS_PER_LOT
     sets = [tuple(farms[i : i + size]) for i in range(0, len(farms), size)]
     if count < len(sets):
-        raise ValueError("too few lots to cover every farm of the pool")
+        raise GenerationError("too few lots to cover every farm of the pool")
     while len(sets) < count:
         sets.append(tuple(sorted(rng.sample(farms, rng.randint(1, min(size, len(farms)))))))
     return sets

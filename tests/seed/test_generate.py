@@ -4,7 +4,7 @@ from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import generate
 
-PINNED = "90e044ff8ada633751410fc1a47fa94a40c3c0a89aa1405b59534aff2e843f95"
+PINNED = "6059e29ee1743b17453a0eaf3aa1967740c0626184ab93a566bc17321e130daf"
 
 
 def test_every_reference_resolves(dataset: Dataset, taxonomy: Taxonomy) -> None:

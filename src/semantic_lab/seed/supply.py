@@ -9,6 +9,7 @@ import random
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from semantic_lab.domain.errors import GenerationError
 from semantic_lab.domain.records import (
     Cooperative,
     CooperativeCertification,
@@ -123,7 +124,7 @@ def _origin_regions(
 def _country_of(taxonomy: Taxonomy, region_key: str) -> str:
     parent = taxonomy.get(region_key).parent_key
     if parent is None:
-        raise ValueError(f"region {region_key} has no country")
+        raise GenerationError(f"region {region_key} has no country")
     return parent
 
 
