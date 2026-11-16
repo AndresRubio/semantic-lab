@@ -1,0 +1,8 @@
+#!/bin/sh
+# Before each commit this runs ruff and mypy (the quick checks; the suite runs in CI).
+# Enable it once per clone with: git config core.hooksPath .githooks
+set -e
+cd "$(git rev-parse --show-toplevel)"
+trap 'status=$?; [ "$status" -eq 0 ] || echo "pre-commit: ruff or mypy failed; git commit --no-verify skips this hook." >&2' EXIT
+uv run --frozen ruff check
+uv run --frozen mypy
