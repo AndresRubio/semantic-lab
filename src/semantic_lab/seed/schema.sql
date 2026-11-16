@@ -2,8 +2,7 @@
 
 drop table if exists quality_incident, order_line, sales_order, customer, roast_batch_lot,
     roast_batch, product_flavour, product, lot_farm, lot, shipment, farm,
-    cooperative_certification, cooperative, concept_closure, concept_alt_label, concept
-    cascade;
+    cooperative_certification, cooperative, concept_closure, concept_alt_label, concept;
 
 create table concept (
     key text primary key,

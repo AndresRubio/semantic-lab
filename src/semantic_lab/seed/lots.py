@@ -132,7 +132,10 @@ def _cover_then_sample(
 def _pool_specs(world: World, rng: random.Random) -> list[Spec]:
     """The 24 blend pool lots: two pools of 12 whose farm sets overlap in exactly SHARED_FARMS."""
     country = POOL_COUNTRY
-    first, second = world.cooperatives_by_country[country][:2]
+    pool_cooperatives = world.cooperatives_by_country.get(country, ())
+    if len(pool_cooperatives) < 2:
+        raise GenerationError(f"the blend pools need two cooperatives in {country}")
+    first, second = pool_cooperatives[:2]
     shipments = world.shipments_by_country[country]
     # The country's shipments are in departure order, so the first ones are the early ones.
     early = shipments[:EARLY_SHIPMENTS_PER_COUNTRY]

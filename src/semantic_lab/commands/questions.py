@@ -114,6 +114,11 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
         # The connection itself failed in the middle of the run, not one question's query.
         err.write(f"postgres: {redaction.detail(error, [password])}\n")
         return 1
+    except OSError as error:
+        # Only writing a stored answer touches a file once the connection is open.
+        first_line = (str(error).splitlines() or [""])[0]
+        err.write(f"questions: {type(error).__name__}: {first_line}\n")
+        return 1
     return 0 if all(results) else 1
 
 

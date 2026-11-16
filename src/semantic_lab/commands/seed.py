@@ -10,7 +10,7 @@ from typing import TextIO
 import psycopg
 
 from semantic_lab import config, redaction
-from semantic_lab.domain.errors import TaxonomyError
+from semantic_lab.domain.errors import GenerationError, TaxonomyError
 from semantic_lab.rdf.taxonomy import load_taxonomy
 from semantic_lab.seed import load
 from semantic_lab.seed.generate import DEFAULT_SEED, generate
@@ -35,7 +35,11 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
     except TaxonomyError as error:
         err.write(f"taxonomy: {error}\n")
         return 1
-    dataset = generate(taxonomy, args.seed)
+    try:
+        dataset = generate(taxonomy, args.seed)
+    except (GenerationError, TaxonomyError) as error:
+        err.write(f"seed: {error}\n")
+        return 1
     dsn = settings.postgres_dsn
     secrets = [redaction.dsn_password(dsn)]
     try:

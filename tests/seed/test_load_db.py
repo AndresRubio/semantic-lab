@@ -1,4 +1,5 @@
 import dataclasses
+import time
 from decimal import Decimal
 from typing import Any
 
@@ -20,6 +21,12 @@ def _counts(connection: psycopg.Connection[Any]) -> dict[str, int]:
         assert row is not None
         counts[table] = row[0]
     return counts
+
+
+def _total(connection: psycopg.Connection[Any]) -> Decimal:
+    row = connection.execute("select sum(amount) from order_line").fetchone()
+    assert row is not None
+    return row[0]
 
 
 def test_every_table_holds_its_rows(
@@ -45,8 +52,8 @@ def test_money_and_dates_survive_the_round_trip(seeded: Settings, dataset: Datas
             "select harvested_on, weight_kg, price_per_kg from lot where code = %s",
             (lot.code,),
         ).fetchone()
-    assert line_row == (line.unit_price, line.amount, line.kg)
     assert line_row is not None
+    assert line_row == (line.unit_price, line.amount, line.kg)
     assert all(isinstance(value, Decimal) for value in line_row)
     assert lot_row == (lot.harvested_on, lot.weight_kg, lot.price_per_kg)
 
@@ -73,11 +80,53 @@ def test_a_failed_rebuild_keeps_the_old_rows(
     broken = dataclasses.replace(dataset, order_lines=(broken_line, *dataset.order_lines[1:]))
     with psycopg.connect(seeded.postgres_dsn) as connection:
         before = _counts(connection)
+        total = _total(connection)
     with psycopg.connect(seeded.postgres_dsn) as connection:
         with pytest.raises(psycopg.errors.ForeignKeyViolation):
             load.rebuild(connection, taxonomy, broken)
     with psycopg.connect(seeded.postgres_dsn) as connection:
         assert _counts(connection) == before
+        assert _total(connection) == total
+
+
+def test_a_view_over_a_table_makes_the_rebuild_fail_and_keeps_the_rows(
+    seeded: Settings, taxonomy: Taxonomy, dataset: Dataset
+) -> None:
+    with psycopg.connect(seeded.postgres_dsn, autocommit=True) as connection:
+        before = _counts(connection)
+        total = _total(connection)
+        connection.execute("create view order_line_copy as select * from order_line")
+    try:
+        with psycopg.connect(seeded.postgres_dsn) as connection:
+            with pytest.raises(psycopg.Error):
+                load.rebuild(connection, taxonomy, dataset)
+        with psycopg.connect(seeded.postgres_dsn) as connection:
+            assert _counts(connection) == before
+            assert _total(connection) == total
+            view = connection.execute("select to_regclass('order_line_copy')").fetchone()
+            assert view is not None
+            assert view[0] is not None
+    finally:
+        with psycopg.connect(seeded.postgres_dsn, autocommit=True) as connection:
+            connection.execute("drop view if exists order_line_copy")
+
+
+def test_a_lock_held_by_another_session_makes_the_rebuild_fail_in_seconds(
+    seeded: Settings, taxonomy: Taxonomy, dataset: Dataset
+) -> None:
+    with psycopg.connect(seeded.postgres_dsn) as connection:
+        before = _counts(connection)
+        total = _total(connection)
+    with psycopg.connect(seeded.postgres_dsn) as holder:
+        holder.execute("lock table order_line in access share mode")
+        started = time.monotonic()
+        with psycopg.connect(seeded.postgres_dsn) as connection:
+            with pytest.raises(psycopg.Error):
+                load.rebuild(connection, taxonomy, dataset)
+        assert time.monotonic() - started < 10
+    with psycopg.connect(seeded.postgres_dsn) as connection:
+        assert _counts(connection) == before
+        assert _total(connection) == total
 
 
 def test_fruity_revenue_can_be_read_through_the_closure(seeded: Settings) -> None:

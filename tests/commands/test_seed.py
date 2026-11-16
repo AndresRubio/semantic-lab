@@ -1,4 +1,6 @@
 import io
+import re
+import shutil
 from pathlib import Path
 
 import psycopg
@@ -7,6 +9,7 @@ from semantic_lab.commands import seed
 from tests.support import envfile
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+TAXONOMY = ROOT / "ontology" / "taxonomy"
 PASSWORD = "hunter2-secret"
 
 
@@ -97,4 +100,24 @@ def test_a_programming_error_in_the_rebuild_is_reported_as_itself(monkeypatch) -
     assert seed.main([], down_env(), out, err) == 1
     assert err.getvalue() == 'postgres: UndefinedTable: relation "concept" does not exist\n'
     assert "invalid DSN" not in err.getvalue()
+    assert out.getvalue() == ""
+
+
+def test_a_taxonomy_the_generator_cannot_use_exits_1_with_one_line_before_any_connection(
+    tmp_path: Path,
+) -> None:
+    for source in TAXONOMY.glob("*.ttl"):
+        shutil.copy(source, tmp_path / source.name)
+    geo = tmp_path / "geo.ttl"
+    blocks = re.split(r"\n\n", geo.read_text(encoding="utf-8"))
+    removed = ("geo:ethiopia ", "geo:yirgacheffe ", "geo:sidama ", "geo:guji ", "geo:harrar ")
+    kept = [block for block in blocks if not block.startswith(removed)]
+    assert len(kept) == len(blocks) - len(removed)
+    geo.write_text("\n\n".join(kept), encoding="utf-8")
+    out, err = io.StringIO(), io.StringIO()
+    code = seed.main(["--taxonomy-dir", str(tmp_path)], down_env(), out, err)
+    assert code == 1
+    assert err.getvalue().startswith("seed: ")
+    assert len(err.getvalue().splitlines()) == 1
+    assert "postgres:" not in err.getvalue()
     assert out.getvalue() == ""

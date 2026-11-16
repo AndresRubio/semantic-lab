@@ -1,5 +1,8 @@
 import io
+import shutil
 from pathlib import Path
+
+import pytest
 
 from semantic_lab.commands import questions
 from tests.support import envfile
@@ -59,3 +62,36 @@ def test_an_unparsable_dsn_is_not_quoted() -> None:
 
     assert code == 1
     assert err.getvalue() == "postgres: ProgrammingError: invalid DSN\n"
+
+
+class FakeConnection:
+    read_only = False
+
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def rollback(self) -> None:
+        return None
+
+
+def test_a_write_failure_is_reported_in_one_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in questions.FILES:
+        shutil.copy(ROOT / "questions" / name, tmp_path / name)
+    (tmp_path / "expected").write_text("a file where the directory should be", encoding="utf-8")
+    monkeypatch.setattr(questions.psycopg, "connect", lambda dsn: FakeConnection())
+    monkeypatch.setattr(questions.reference, "run_sql", lambda connection, question: [[1]])
+    out, err = io.StringIO(), io.StringIO()
+
+    code = questions.main(
+        ["--questions-dir", str(tmp_path), "--write-expected"], down_env(), out, err
+    )
+
+    assert code == 1
+    assert err.getvalue().startswith("questions: FileExistsError: ")
+    assert len(err.getvalue().splitlines()) == 1
+    assert "Traceback" not in err.getvalue()

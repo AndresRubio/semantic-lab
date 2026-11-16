@@ -1,5 +1,6 @@
 """The Postgres schema of the seed and the loader that rebuilds it in one transaction."""
 
+from collections.abc import Iterable, Sequence
 from dataclasses import fields, is_dataclass
 from importlib.resources import files
 from typing import Any, get_args, get_type_hints
@@ -29,6 +30,9 @@ DATA_TABLES: tuple[tuple[str, str], ...] = (
     ("quality_incident", "quality_incidents"),
 )
 
+# How long the rebuild waits for a lock on one of its tables before it gives up.
+LOCK_TIMEOUT = "5s"
+
 TABLES: tuple[str, ...] = CONCEPT_TABLES + tuple(table for table, _ in DATA_TABLES)
 
 
@@ -48,7 +52,7 @@ def _copy(
     cursor: psycopg.Cursor[Any],
     table: str,
     columns: tuple[str, ...],
-    rows: Any,
+    rows: Iterable[Sequence[object]],
 ) -> int:
     count = 0
     with cursor.copy(f"copy {table} ({', '.join(columns)}) from stdin") as copy:
@@ -63,10 +67,15 @@ def rebuild(
 ) -> dict[str, int]:
     """Drop and recreate the 17 tables and fill them, all in one transaction.
 
-    A failure part way rolls everything back, so the previous rows stay.
+    A failure part way rolls everything back, so the previous rows stay. A session that holds a
+    lock on one of the tables makes the rebuild fail after `LOCK_TIMEOUT` instead of waiting,
+    and a view or foreign key outside the 17 tables makes the drop fail instead of vanishing. On
+    a connection that already has a transaction open, the rebuild runs as a savepoint of that
+    transaction.
     """
     counts: dict[str, int] = {}
     with connection.transaction(), connection.cursor() as cursor:
+        cursor.execute(f"set local lock_timeout = '{LOCK_TIMEOUT}'")
         cursor.execute(_schema())
         counts["concept"] = _copy(
             cursor,
