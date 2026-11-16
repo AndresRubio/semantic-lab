@@ -1,6 +1,8 @@
 import io
 from pathlib import Path
 
+import psycopg
+
 from semantic_lab.commands import seed
 from tests.support import envfile
 
@@ -74,4 +76,25 @@ def test_a_taxonomy_file_with_a_syntax_error_exits_1_before_any_connection(
     assert err.getvalue().startswith("taxonomy: ")
     assert len(err.getvalue().splitlines()) == 1
     assert "Traceback" not in err.getvalue()
+    assert out.getvalue() == ""
+
+
+class FakeConnection:
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+
+def test_a_programming_error_in_the_rebuild_is_reported_as_itself(monkeypatch) -> None:
+    def fail(*args: object) -> dict[str, int]:
+        raise psycopg.errors.UndefinedTable("relation \"concept\" does not exist")
+
+    monkeypatch.setattr(seed.psycopg, "connect", lambda dsn: FakeConnection())
+    monkeypatch.setattr(seed.load, "rebuild", fail)
+    out, err = io.StringIO(), io.StringIO()
+    assert seed.main([], down_env(), out, err) == 1
+    assert err.getvalue() == 'postgres: UndefinedTable: relation "concept" does not exist\n'
+    assert "invalid DSN" not in err.getvalue()
     assert out.getvalue() == ""

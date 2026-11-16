@@ -37,14 +37,21 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
         return 1
     dataset = generate(taxonomy, args.seed)
     dsn = settings.postgres_dsn
+    secrets = [redaction.dsn_password(dsn)]
     try:
-        with psycopg.connect(dsn) as connection:
-            counts = load.rebuild(connection, taxonomy, dataset)
+        connection = psycopg.connect(dsn)
     except psycopg.ProgrammingError as error:
+        # Only the connect step can fail on an unparsable DSN, and that message quotes it.
         err.write(f"postgres: {redaction.unparsable_detail(error, 'DSN')}\n")
         return 1
     except psycopg.Error as error:
-        err.write(f"postgres: {redaction.detail(error, [redaction.dsn_password(dsn)])}\n")
+        err.write(f"postgres: {redaction.detail(error, secrets)}\n")
+        return 1
+    try:
+        with connection:
+            counts = load.rebuild(connection, taxonomy, dataset)
+    except psycopg.Error as error:
+        err.write(f"postgres: {redaction.detail(error, secrets)}\n")
         return 1
     for table in load.TABLES:
         out.write(f"{table}  {counts[table]}\n")

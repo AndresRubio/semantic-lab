@@ -13,6 +13,7 @@ from semantic_lab import redaction
 from semantic_lab.config import Settings
 from semantic_lab.semantic import token
 
+
 @dataclass(frozen=True)
 class Check:
     service: str
