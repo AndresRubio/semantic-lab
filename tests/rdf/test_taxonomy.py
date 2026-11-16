@@ -116,3 +116,24 @@ def test_a_good_file_loads(tmp_path: Path) -> None:
 def test_an_empty_directory_is_refused(tmp_path: Path) -> None:
     with pytest.raises(TaxonomyError):
         load_taxonomy(tmp_path)
+
+
+def test_a_file_with_a_syntax_error_is_refused_and_named(tmp_path: Path) -> None:
+    (tmp_path / "good.ttl").write_text(GOOD)
+    (tmp_path / "broken.ttl").write_text("this is not turtle {{{")
+    with pytest.raises(TaxonomyError, match=r"broken\.ttl") as refused:
+        load_taxonomy(tmp_path)
+    assert "\n" not in str(refused.value)
+    assert str(tmp_path) not in str(refused.value)
+
+
+def test_a_file_that_is_not_text_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "binary.ttl").write_bytes(b"\xff\xfe\x00\x80 garbage \xff")
+    with pytest.raises(TaxonomyError, match=r"binary\.ttl"):
+        load_taxonomy(tmp_path)
+
+
+def test_a_truncated_file_is_refused(tmp_path: Path) -> None:
+    (tmp_path / "cut.ttl").write_text("@prefix a: <x> .\n a:b a:c")
+    with pytest.raises(TaxonomyError, match=r"cut\.ttl"):
+        load_taxonomy(tmp_path)

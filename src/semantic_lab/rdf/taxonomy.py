@@ -14,7 +14,14 @@ def load_taxonomy(directory: Path) -> Taxonomy:
         raise TaxonomyError(f"no Turtle files in {directory}")
     graph = Graph()
     for file in files:
-        graph.parse(file, format="turtle")
+        try:
+            graph.parse(file, format="turtle")
+        except (SyntaxError, ValueError, IndexError) as error:
+            # rdflib's Turtle parser raises BadSyntax (a SyntaxError) for bad syntax, a
+            # UnicodeDecodeError (a ValueError) for bytes that are not UTF-8, and a bare
+            # IndexError when the text stops in the middle of a statement.
+            reason = " ".join(str(error).split()) or type(error).__name__
+            raise TaxonomyError(f"{file.name}: not valid Turtle: {reason}") from error
     subjects = sorted(s for s in graph.subjects(RDF.type, SKOS.Concept) if isinstance(s, URIRef))
     concepts = [_concept(graph, subject) for subject in subjects]
     return build_taxonomy(concepts)

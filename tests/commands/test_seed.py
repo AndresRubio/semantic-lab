@@ -62,3 +62,16 @@ def test_an_unparsable_dsn_is_not_quoted() -> None:
     out, err = io.StringIO(), io.StringIO()
     assert seed.main([], env, out, err) == 1
     assert err.getvalue() == "postgres: ProgrammingError: invalid DSN\n"
+
+
+def test_a_taxonomy_file_with_a_syntax_error_exits_1_before_any_connection(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "bad.ttl").write_text("this is not turtle {{{", encoding="utf-8")
+    out, err = io.StringIO(), io.StringIO()
+    code = seed.main(["--taxonomy-dir", str(tmp_path)], down_env(), out, err)
+    assert code == 1
+    assert err.getvalue().startswith("taxonomy: ")
+    assert len(err.getvalue().splitlines()) == 1
+    assert "Traceback" not in err.getvalue()
+    assert out.getvalue() == ""
