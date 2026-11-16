@@ -1,0 +1,11 @@
+# The actions of the workflow are pinned to a commit and do not move by themselves. Dependabot
+# opens one pull request a week with the new versions, commit and `# vX.Y.Z` comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
