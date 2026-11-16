@@ -114,10 +114,10 @@ mid 2025. The graph stays under 100,000 nodes.
 
 The Turtle files are the source of the taxonomies, and Postgres holds a copy. The seed command
 loads every concept into a `concept` table with a short key, and every ancestor and descendant
-pair into a `concept_closure` table. Cooperatives (through their region), lots (through their process) and products (through their
-category, origin region and flavour notes) point at concept keys. This
-lets Cube filter on a concept key, and it gives the `sql` profile the same hierarchy the other
-profiles get, so the comparison is fair.
+pair into a `concept_closure` table. Cooperatives (through their region), lots (through their
+process) and products (through their category, origin region and flavour notes) point at concept
+keys. This lets Cube filter on a concept key, and it gives the `sql` profile the same hierarchy
+the other profiles get, so the comparison is fair.
 
 ## Questions the system must answer
 
@@ -248,6 +248,11 @@ that. If small models still fail to carry the keys across, the report says so.
 
 `taxonomy_search` returns concept keys together with the keys of everything narrower, so a
 hierarchy question becomes one Cube filter on a list of keys.
+
+The read-only Postgres role behind `sql_query` has to survive a rebuild. The seed command drops
+and recreates all 17 tables, and a table's grants go with it, so the role needs
+`pg_read_all_data`, or a grant written inside `schema.sql` so that every rebuild repeats it, to
+keep its access afterwards.
 
 Neo4j Community has no roles, so there is no read-only database user. `graph_query` has three
 defences. It runs in a read transaction, which refuses writes, and a test proves that a

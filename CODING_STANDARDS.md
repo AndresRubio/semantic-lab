@@ -14,12 +14,15 @@ The import directions that hold today, enforced by `tests/guards/test_layers.py`
 |---|---|---|
 | `domain/` | nothing, and only the standard library from outside | It is the vocabulary every other layer shares, and a dependency in it would pull that dependency into all of them. |
 | `rdf/` | `domain/` | It reads Turtle into the domain's types. It has no reason to know the generator or a store. |
-| `seed/` | `domain/` | The generator builds the domain's records and is pure, so it must not read a file, a store or a taxonomy loader. It receives a `Taxonomy` as an argument. |
-| `evals/` | `domain/` | Questions and reference queries are checked against the domain's types, not against how the seed or a loader produced them. |
+| `seed/` | `domain/` | The generator modules build the domain's records and are pure, so they read no file, no store and no taxonomy loader, and receive a `Taxonomy` as an argument. `load.py` is the one module that does I/O: it reads `schema.sql` and writes Postgres with `psycopg`. |
+| `evals/` | `domain/` | It reads the question files and runs a reference query on a connection it is given. Today it imports nothing from `domain/`, and the rule keeps it from learning how the seed or a loader produced the rows. |
 | `semantic/` | nothing of ours | The Cube client is a boundary to one service and holds no domain knowledge. |
 | `commands/` | any layer | A command is an entry point that wires layers together. |
 
-Nothing imports `commands/`, because the layers must not depend on an entry point. `graph/` and
+Nothing imports `commands/`, because the layers must not depend on an entry point. The same holds
+for the top-level modules, and `tests/guards/test_layers.py` checks both. A second guard in that
+file keeps the generator pure: inside `seed/`, only `load.py` may import a third-party module, and
+every other module imports only the standard library, `semantic_lab.domain` and `semantic_lab.seed`. `graph/` and
 `agent/` have no line yet: the unit that adds each one settles which packages it imports,
 writes that down here and adds it to the test.
 
