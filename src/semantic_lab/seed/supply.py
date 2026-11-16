@@ -32,6 +32,8 @@ from semantic_lab.seed.names import (
 )
 from semantic_lab.seed.products import generate_products
 
+# Lots arrived by this day can be roasted from the first roasting days on.
+EARLY_ARRIVAL_END = date(2023, 12, 31)
 SHIPMENT_COUNT = 80
 FARMS_PER_COOPERATIVE = 8
 EARLY_DEPARTURE = (date(2023, 10, 20), date(2023, 11, 15))
@@ -81,7 +83,8 @@ def generate_supply(taxonomy: Taxonomy, rng: random.Random) -> Supply:
         country_of_shipment=country_of_shipment,
     )
     lots, lot_farms = generate_lots(taxonomy, world, cooperatives, rng)
-    products, product_flavours = generate_products(taxonomy, rng)
+    origin_regions = _origin_regions(cooperatives, shipments, lots)
+    products, product_flavours = generate_products(taxonomy, rng, origin_regions)
     return Supply(
         cooperatives=cooperatives,
         certifications=certifications,
@@ -91,6 +94,29 @@ def generate_supply(taxonomy: Taxonomy, rng: random.Random) -> Supply:
         lot_farms=lot_farms,
         products=products,
         product_flavours=product_flavours,
+    )
+
+
+def _origin_regions(
+    cooperatives: tuple[Cooperative, ...],
+    shipments: tuple[Shipment, ...],
+    lots: tuple[Lot, ...],
+) -> tuple[str, ...]:
+    """The regions a one-lot product may come from: those with a lot that can be roasted at once.
+
+    A recalled lot does not count, because only its own batches may consume it.
+    """
+    region_of = {c.code: c.region_key for c in cooperatives}
+    arrived_on = {s.code: s.arrived_on for s in shipments}
+    return tuple(
+        sorted(
+            {
+                region_of[lot.cooperative_code]
+                for lot in lots
+                if arrived_on[lot.shipment_code] <= EARLY_ARRIVAL_END
+                and lot.code not in planted.RECALLED_LOTS
+            }
+        )
     )
 
 

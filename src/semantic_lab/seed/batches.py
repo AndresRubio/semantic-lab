@@ -15,7 +15,6 @@ from decimal import ROUND_HALF_UP, Decimal
 from semantic_lab.domain.records import Product, RoastBatch, RoastBatchLot
 from semantic_lab.seed import planted
 from semantic_lab.seed.draw import decimal_from_hundredths, random_date
-from semantic_lab.seed.names import ORIGIN_PORTS
 from semantic_lab.seed.products import BLEND_CATEGORIES
 from semantic_lab.seed.supply import Supply
 
@@ -27,15 +26,12 @@ LAST_ROAST_DAY = date(2025, 12, 28)
 FIRST_BATCH_DAYS = 4
 OUTPUT_HUNDREDTHS = (6000, 40000)
 ROAST_YIELD = Decimal("0.85")
-ONE_LOT_CATEGORIES = ("category.single-origin", "category.microlot", "category.decaf")
 BLEND_LOTS = (2, 4)
 MAX_BLEND_WEIGHT = 10
 RECALLED_BATCHES = (3, 6)
 # A recalled lot's batches are roasted at least this long before the recall, so the lines that
 # carry them have time to be ordered.
 RECALL_LEAD_DAYS = 30
-
-PORT_COUNTRY = {port: country for country, port in ORIGIN_PORTS.items()}
 
 
 @dataclass(frozen=True)
@@ -91,15 +87,14 @@ class _PoolDraw:
 def generate_batches(supply: Supply, rng: random.Random) -> Batches:
     arrival_of_shipment = {s.code: s.arrived_on for s in supply.shipments}
     arrival = {lot.code: arrival_of_shipment[lot.shipment_code] for lot in supply.lots}
-    country = {s.code: PORT_COUNTRY[s.origin_port] for s in supply.shipments}
-    lot_country = {lot.code: country[lot.shipment_code] for lot in supply.lots}
+    region_of_cooperative = {c.code: c.region_key for c in supply.cooperatives}
+    lot_region = {lot.code: region_of_cooperative[lot.cooperative_code] for lot in supply.lots}
     usable = [lot.code for lot in supply.lots if lot.code not in planted.RECALLED_LOTS]
     anywhere = _Arrivals(arrival, usable)
-    by_country = {
-        name: _Arrivals(arrival, [code for code in usable if lot_country[code] == name])
-        for name in sorted(set(country.values()))
+    by_region = {
+        region: _Arrivals(arrival, [code for code in usable if lot_region[code] == region])
+        for region in sorted({p.origin_region_key for p in supply.products if p.origin_region_key})
     }
-    origin_of = _origins(supply.products, sorted(by_country), rng)
     farms_of_lot: dict[str, set[str]] = {lot.code: set() for lot in supply.lots}
     for link in supply.lot_farms:
         farms_of_lot[link.lot_code].add(link.farm_code)
@@ -117,9 +112,8 @@ def generate_batches(supply: Supply, rng: random.Random) -> Batches:
     links = []
     for index, plan in enumerate(_plans(supply, arrival, rng)):
         product = plan.product
-        if product.category_key in ONE_LOT_CATEGORIES:
-            usable_lots = by_country[origin_of[product.code]].before(plan.roasted_on)
-            lots = [rng.choice(usable_lots)]
+        if product.origin_region_key is not None:
+            lots = [rng.choice(by_region[product.origin_region_key].before(plan.roasted_on))]
         else:
             lots = _blend_lots(plan, anywhere, pools, rng)
         shares = _shares(len(lots), rng)
@@ -145,15 +139,6 @@ def recalled_batches(batches: Batches) -> dict[str, tuple[str, ...]]:
         if link.lot_code in found:
             found[link.lot_code].append(link.roast_batch_code)
     return {lot: tuple(codes) for lot, codes in found.items()}
-
-
-def _origins(
-    products: tuple[Product, ...], countries: list[str], rng: random.Random
-) -> dict[str, str]:
-    """The one country each single-lot product is made from."""
-    codes = [p.code for p in products if p.category_key in ONE_LOT_CATEGORIES]
-    rng.shuffle(codes)
-    return {code: countries[position % len(countries)] for position, code in enumerate(codes)}
 
 
 def _plans(supply: Supply, arrival: dict[str, date], rng: random.Random) -> list[_Plan]:

@@ -58,6 +58,7 @@ class Product:
     code: str
     name: str
     category_key: str
+    origin_region_key: str | None
     bag_weight_g: int
     list_price: Decimal
 

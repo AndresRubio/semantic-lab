@@ -4,7 +4,7 @@ from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import generate
 
-PINNED = "7b59e35a7c216b5d8908642e5dde4300325059908b9d38663e2fb9d4000aa107"
+PINNED = "90e044ff8ada633751410fc1a47fa94a40c3c0a89aa1405b59534aff2e843f95"
 
 
 def test_every_reference_resolves(dataset: Dataset, taxonomy: Taxonomy) -> None:
@@ -26,6 +26,7 @@ def test_every_reference_resolves(dataset: Dataset, taxonomy: Taxonomy) -> None:
     assert {link.lot_code for link in dataset.lot_farms} <= lots
     assert {link.farm_code for link in dataset.lot_farms} <= farms
     assert {p.category_key for p in dataset.products} <= concepts
+    assert {p.origin_region_key for p in dataset.products} - {None} <= concepts
     assert {link.product_code for link in dataset.product_flavours} <= products
     assert {link.flavour_key for link in dataset.product_flavours} <= concepts
     assert {b.product_code for b in dataset.roast_batches} <= products
