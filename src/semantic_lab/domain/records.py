@@ -119,3 +119,23 @@ class QualityIncident:
     kind: str
     reported_on: date
     description: str
+
+
+@dataclass(frozen=True)
+class Dataset:
+    """Every data table of the seed, in the order of the data model."""
+
+    cooperatives: tuple[Cooperative, ...]
+    certifications: tuple[CooperativeCertification, ...]
+    farms: tuple[Farm, ...]
+    shipments: tuple[Shipment, ...]
+    lots: tuple[Lot, ...]
+    lot_farms: tuple[LotFarm, ...]
+    products: tuple[Product, ...]
+    product_flavours: tuple[ProductFlavour, ...]
+    roast_batches: tuple[RoastBatch, ...]
+    roast_batch_lots: tuple[RoastBatchLot, ...]
+    customers: tuple[Customer, ...]
+    orders: tuple[SalesOrder, ...]
+    order_lines: tuple[OrderLine, ...]
+    quality_incidents: tuple[QualityIncident, ...]
