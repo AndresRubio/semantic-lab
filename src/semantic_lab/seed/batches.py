@@ -5,7 +5,8 @@ are used by the batches planned for them and by no other, so how many batches a 
 touches is decided here and not left to chance.
 
 Cumbre roasts to demand, so a batch's output is known only once the orders exist.
-`generate_batches` plans the batches and `finish_batches` sets each output from what was sold.
+`generate_batches` plans the batches and `finish_batches` sets each output from a drawn size and
+from what was sold.
 """
 
 import random
@@ -28,10 +29,10 @@ LAST_ROAST_DAY = date(2025, 12, 28)
 # The first batch of each product falls in the first FIRST_BATCH_DAYS days, so orders can start
 # on day one with ten products on offer.
 FIRST_BATCH_DAYS = 4
-# The output of a batch nobody ordered from, in hundredths of a kilogram.
+# The size every batch is planned at, in hundredths of a kilogram.
 OUTPUT_HUNDREDTHS = (6000, 40000)
-# A batch that sold keeps this many percent of what it sold, at the least and at the most, as an
-# unsold remainder.
+# A batch roasted larger than its drawn size to meet demand keeps this many percent of what it
+# sold, at the least and at the most, as an unsold remainder.
 UNSOLD_PERCENT = (2, 20)
 ROAST_YIELD = Decimal("0.85")
 BLEND_LOTS = (2, 4)
@@ -154,18 +155,20 @@ def finish_batches(
 ) -> tuple[RoastBatch, ...]:
     """The batches with their output, in the order they were planned.
 
-    A batch that sold gets what it sold plus an unsold remainder of `UNSOLD_PERCENT` of it,
-    rounded up to the cent so the output never falls below the sales. A batch nobody ordered
-    from gets a drawn output.
+    Every batch draws a size from `OUTPUT_HUNDREDTHS`. A batch that sold needs its sales plus an
+    unsold remainder of `UNSOLD_PERCENT` of them, rounded up to the cent so the output never falls
+    below the sales. The output is the larger of the two: a batch that sells little keeps its
+    drawn size and the rest is stock, and a batch that sells more than its size was roasted
+    larger to meet demand.
     """
     finished = []
     for batch in batches.planned:
+        output_kg = decimal_from_hundredths(rng.randint(*OUTPUT_HUNDREDTHS))
         sold = sold_kg.get(batch.code)
-        if sold is None:
-            output_kg = decimal_from_hundredths(rng.randint(*OUTPUT_HUNDREDTHS))
-        else:
+        if sold is not None:
             percent = 100 + rng.randint(*UNSOLD_PERCENT)
-            output_kg = (sold * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
+            needed = (sold * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
+            output_kg = max(output_kg, needed)
         finished.append(
             RoastBatch(
                 code=batch.code,

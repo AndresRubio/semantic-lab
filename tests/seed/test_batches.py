@@ -153,32 +153,40 @@ def test_no_batch_sells_more_than_its_output(world: World) -> None:
         assert sold.get(batch.code, Decimal(0)) <= batch.output_kg, batch.code
 
 
-def test_a_sold_batch_keeps_between_2_and_20_percent_unsold(world: World) -> None:
+def test_every_batch_has_an_output_of_60_kg_or_more(world: World) -> None:
+    for batch in world.sales.roast_batches:
+        assert batch.output_kg >= Decimal("60"), batch.code
+        assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
+
+
+def test_a_batch_that_sells_little_keeps_its_drawn_size(world: World) -> None:
     sold = sold_kg(world.sales)
     checked = 0
     for batch in world.sales.roast_batches:
-        if batch.code not in sold:
+        if sold.get(batch.code, Decimal(0)) <= Decimal("50"):
+            checked += 1
+            assert Decimal("60") <= batch.output_kg <= Decimal("400"), batch.code
+    assert checked > 100
+
+
+def test_a_batch_roasted_above_400_kg_keeps_between_2_and_20_percent_unsold(
+    world: World,
+) -> None:
+    sold = sold_kg(world.sales)
+    checked = 0
+    for batch in world.sales.roast_batches:
+        if batch.output_kg <= Decimal("400"):
             continue
         checked += 1
         kept = sold[batch.code]
         assert kept * Decimal("1.02") <= batch.output_kg, batch.code
         # Rounding the output up to the cent adds less than one cent.
         assert batch.output_kg - CENTS < kept * Decimal("1.20"), batch.code
-        assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
-    assert checked > 1000
-
-
-def test_an_unsold_batch_has_an_output_in_the_drawn_range(world: World) -> None:
-    sold = sold_kg(world.sales)
-    unsold = [b for b in world.sales.roast_batches if b.code not in sold]
-    assert unsold
-    for batch in unsold:
-        assert Decimal("60") <= batch.output_kg <= Decimal("400"), batch.code
-        assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
+    assert checked > 100
 
 
 class FixedUnsoldPercent(random.Random):
-    """Draws the lowest value of any range, so the unsold percentage is 2."""
+    """Draws the lowest value of any range: a size of 60 kg and an unsold percentage of 2."""
 
     def randint(self, a: int, b: int) -> int:
         return a
@@ -188,29 +196,42 @@ def planned(code: str) -> PlannedBatch:
     return PlannedBatch(code, "P-01", date(2024, 1, 2), Decimal("9.50"))
 
 
-def test_finish_batches_rounds_the_output_up_to_the_cent() -> None:
+def test_finish_batches_keeps_the_drawn_size_when_it_covers_the_need() -> None:
+    batches = Batches((planned("B-0001"),), ())
+    (finished,) = finish_batches(batches, {"B-0001": Decimal("10.001")}, FixedUnsoldPercent())
+    # The need is 10.001 * 1.02 = 10.21 and the drawn size is 60.00, so the size wins.
+    assert finished.output_kg == Decimal("60.00")
+    assert finished.product_code == "P-01"
+    assert finished.roasted_on == date(2024, 1, 2)
+    assert finished.cost_per_kg == Decimal("9.50")
+
+
+def test_finish_batches_roasts_larger_when_the_need_exceeds_the_drawn_size() -> None:
     batches = Batches((planned("B-0001"), planned("B-0002")), ())
     finished = finish_batches(
-        batches, {"B-0001": Decimal("10.001"), "B-0002": Decimal("50.000")}, FixedUnsoldPercent()
+        batches,
+        {"B-0001": Decimal("100.001"), "B-0002": Decimal("500.000")},
+        FixedUnsoldPercent(),
     )
-    # 10.001 * 1.02 = 10.20102, which rounds up to 10.21 where nearest would give 10.20.
+    # 100.001 * 1.02 = 102.00102, which rounds up to 102.01 where nearest would give 102.00.
     assert [(b.code, b.output_kg) for b in finished] == [
-        ("B-0001", Decimal("10.21")),
-        ("B-0002", Decimal("51.00")),
+        ("B-0001", Decimal("102.01")),
+        ("B-0002", Decimal("510.00")),
     ]
-    assert finished[0].product_code == "P-01"
-    assert finished[0].roasted_on == date(2024, 1, 2)
-    assert finished[0].cost_per_kg == Decimal("9.50")
 
 
-def test_finish_batches_never_gives_less_than_what_was_sold() -> None:
+def test_finish_batches_never_gives_less_than_60_kg_or_what_was_sold() -> None:
     rng = random.Random(11)
     sales = {
         f"B-{n:04d}": Decimal(rng.randint(1, 5_000_000)) / 1000 for n in range(1, 2001)
     }
     batches = Batches(tuple(planned(code) for code in sales), ())
-    for batch in finish_batches(batches, sales, rng):
-        assert batch.output_kg >= sales[batch.code] * Decimal("1.02"), batch.code
+    finished = finish_batches(batches, sales, rng)
+    for batch in finished:
+        assert batch.output_kg >= max(Decimal("60"), sales[batch.code] * Decimal("1.02"))
+        assert batch.output_kg == batch.output_kg.quantize(CENTS)
+    assert any(b.output_kg > Decimal("400") for b in finished)
+    assert any(b.output_kg < Decimal("400") for b in finished)
 
 
 def test_a_batch_with_no_sales_draws_its_output_from_the_range() -> None:

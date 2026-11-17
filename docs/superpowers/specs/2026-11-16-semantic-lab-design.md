@@ -93,8 +93,8 @@ when the product is a blend. A product is made from roast batches and has a cate
 flavour notes. A one-lot product (single-origin, microlot or decaf) has an origin region and
 is roasted only from the lots of that region. A blend has no origin region. A blend batch
 splits its revenue among its lots by a `share` that sums to 1. Cumbre roasts to demand: a
-batch's output is what was sold from it plus an unsold remainder, so no batch sells more than
-it produced. An order line sells a quantity of a product from one roast batch to a customer. A quality incident recalls a lot.
+batch has a planned size, and it is roasted larger when the orders from it need more, so no
+batch sells more than it produced. An order line sells a quantity of a product from one roast batch to a customer. A quality incident recalls a lot.
 
 The domain was picked because tracing a recalled lot forward to the customers who received it
 is a path question that SQL handles badly and a graph handles in one pattern, while "revenue by
