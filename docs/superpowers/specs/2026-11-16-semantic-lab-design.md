@@ -87,13 +87,14 @@ The things: country, region, cooperative, farm, lot, shipment, roast batch, prod
 order, order line and quality incident. A cooperative points at its region, and a farm belongs
 to a cooperative, so a farm has no region of its own. A lot belongs to one cooperative, is
 harvested from one or more of that cooperative's farms, and has a processing method, a variety
-and a harvest date. Certifications are a table of dated periods per cooperative, so a
+and a harvest date. Farm names are unique. Certifications are a table of dated periods per cooperative, so a
 certification can lapse. A shipment carries lots. A roast batch consumes one lot, or several
 when the product is a blend. A product is made from roast batches and has a category and
 flavour notes. A one-lot product (single-origin, microlot or decaf) has an origin region and
 is roasted only from the lots of that region. A blend has no origin region. A blend batch
-splits its revenue among its lots by a `share` that sums to 1. An order line sells a quantity
-of a product from one roast batch to a customer. A quality incident recalls a lot.
+splits its revenue among its lots by a `share` that sums to 1. Cumbre roasts to demand: a
+batch's output is what was sold from it plus an unsold remainder, so no batch sells more than
+it produced. An order line sells a quantity of a product from one roast batch to a customer. A quality incident recalls a lot.
 
 The domain was picked because tracing a recalled lot forward to the customers who received it
 is a path question that SQL handles badly and a graph handles in one pattern, while "revenue by

@@ -49,6 +49,7 @@ later unit adds each one.
 ```
 src/semantic_lab/
   config.py        the settings and config.load
+  pg.py            opens every Postgres connection, with a timeout and an error with no credential
   probes.py        one probe per service
   redaction.py     one detail line for an exception, with no credential in it
   domain/          records.py (the row types), taxonomy.py (Taxonomy), errors.py: standard library only
@@ -69,8 +70,9 @@ questions/         dev.toml (8 questions), heldout.toml (4) and expected/, one J
 
 `seed/` holds one module per table group (`supply.py`, `lots.py`, `products.py`,
 `batches.py`, `orders.py`, `recalls.py`, `sales.py`), `generate.py` that joins them into a
-`Dataset`, and `planted.py`, `names.py` and `draw.py` for the planted facts, the names and
-the draws. The generator is pure: the same seed gives the same rows.
+`Dataset`, `requirements.py` that checks a taxonomy before anything is drawn, and `planted.py`,
+`names.py` and `draw.py` for the planted facts, the names and the draws. The generator is pure:
+the same seed gives the same rows.
 
 A test for a planned layer sits in that layer's future directory. `tests/graph/` holds the
 Neo4j read-only check, which tests the driver and the container until `src/semantic_lab/graph/`
