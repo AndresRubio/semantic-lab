@@ -12,7 +12,7 @@ import psycopg
 
 from semantic_lab import config, redaction
 from semantic_lab.evals import questions, reference
-from semantic_lab.evals.questions import Question, QuestionError
+from semantic_lab.evals.questions import MissingAnswer, Question, QuestionError
 
 FILES = ("dev.toml", "heldout.toml")
 
@@ -45,7 +45,7 @@ def _check(
             return True
         try:
             expected = questions.read_expected(directory, question.id)
-        except QuestionError:
+        except MissingAnswer:
             out.write(f"MISSING {question.id}\n")
             return False
     except QuestionError as error:

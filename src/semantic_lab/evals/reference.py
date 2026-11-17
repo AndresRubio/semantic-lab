@@ -23,7 +23,8 @@ def sort_rows(rows: list[list[object]], positions: list[int]) -> None:
 
 def run_sql(connection: psycopg.Connection[Any], question: Question) -> list[list[object]]:
     """The rows the reference SQL gives. They are sorted by the key columns unless the question
-    is ordered, so that two runs of an unordered question compare equal."""
+    is ordered, so that two runs of an unordered question compare equal. Two rows with the same
+    key values raise `QuestionError`, because the key then cannot fix their order."""
     with connection.cursor() as cursor:
         cursor.execute(question.sql)
         names = tuple(column.name for column in cursor.description or ())
@@ -33,7 +34,12 @@ def run_sql(connection: psycopg.Connection[Any], question: Question) -> list[lis
                 f"the question declares {list(question.columns)}"
             )
         rows = [list(row) for row in cursor.fetchall()]
+    positions = [question.columns.index(name) for name in question.key]
+    keys = [tuple(row[position] for position in positions) for row in rows]
+    if len(set(keys)) != len(keys):
+        raise QuestionError(
+            f"question {question.id}: the key {list(question.key)} does not identify a row"
+        )
     if not question.ordered:
-        positions = [question.columns.index(name) for name in question.key]
         sort_rows(rows, positions)
     return rows

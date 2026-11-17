@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from semantic_lab.evals import questions
-from semantic_lab.evals.questions import Question, QuestionError
+from semantic_lab.evals.questions import MissingAnswer, Question, QuestionError
 
 VALID = """
 [[question]]
@@ -56,6 +56,7 @@ CASES = {
     "no columns": VALID.replace('columns = ["lots"]', "columns = []").replace(
         'key = ["lots"]', "key = []"
     ),
+    "an empty key": VALID.replace('key = ["lots"]', "key = []"),
 }
 
 
@@ -63,6 +64,12 @@ CASES = {
 def test_load_refuses(tmp_path: Path, case: str) -> None:
     with pytest.raises(QuestionError, match="metric-one"):
         questions.load(write(tmp_path, CASES[case]))
+
+
+@pytest.mark.parametrize("text", ["", "# only a comment\n", "question = []\n"])
+def test_load_refuses_a_file_with_no_questions(tmp_path: Path, text: str) -> None:
+    with pytest.raises(QuestionError, match=r"q\.toml.*no questions"):
+        questions.load(write(tmp_path, text))
 
 
 def test_load_refuses_a_file_that_is_not_toml(tmp_path: Path) -> None:
@@ -92,13 +99,31 @@ def test_read_expected_reads_the_rows(tmp_path: Path) -> None:
     assert questions.read_expected(tmp_path, "metric-one") == [["a", 1.5], ["b", 2]]
 
 
-def test_read_expected_of_a_missing_file_raises_question_error(tmp_path: Path) -> None:
-    with pytest.raises(QuestionError, match="metric-one"):
+def test_read_expected_of_a_missing_file_raises_missing_answer(tmp_path: Path) -> None:
+    with pytest.raises(MissingAnswer, match="metric-one"):
         questions.read_expected(tmp_path, "metric-one")
 
 
-def test_read_expected_of_a_malformed_file_raises_question_error(tmp_path: Path) -> None:
-    (tmp_path / "metric-one.json").write_text('{"nope": 1}', encoding="utf-8")
+def test_a_missing_answer_is_a_question_error() -> None:
+    assert issubclass(MissingAnswer, QuestionError)
 
-    with pytest.raises(QuestionError, match="metric-one"):
+
+@pytest.mark.parametrize("text", ['{"nope": 1}', '{"rows": [', "", '{"rows": [1, 2]}', "[]"])
+def test_read_expected_of_a_file_that_exists_but_is_unusable_is_not_a_missing_answer(
+    tmp_path: Path, text: str
+) -> None:
+    (tmp_path / "metric-one.json").write_text(text, encoding="utf-8")
+
+    with pytest.raises(QuestionError, match="metric-one") as raised:
         questions.read_expected(tmp_path, "metric-one")
+    assert not isinstance(raised.value, MissingAnswer)
+
+
+def test_read_expected_of_a_directory_in_place_of_the_file_is_not_a_missing_answer(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "metric-one.json").mkdir()
+
+    with pytest.raises(QuestionError, match="metric-one") as raised:
+        questions.read_expected(tmp_path, "metric-one")
+    assert not isinstance(raised.value, MissingAnswer)

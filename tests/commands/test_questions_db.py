@@ -17,6 +17,7 @@ STACK_ENV = ROOT / "tests" / "stack.env"
 QUESTIONS = ROOT / "questions"
 FRUITY = "hierarchy-kg-fruity-2025"
 ORGANIC = "metric-organic-lots-2025"
+HELDOUT = "heldout-fine"
 
 pytestmark = pytest.mark.db
 
@@ -25,6 +26,13 @@ def run(*argv: str) -> tuple[int, list[str], str]:
     out, err = io.StringIO(), io.StringIO()
     code = questions.main(list(argv), envfile.read(STACK_ENV), out, err)
     return code, out.getvalue().splitlines(), err.getvalue()
+
+
+def run_dev(directory: Path) -> tuple[int, list[str], str]:
+    """Run a directory made by `questions_dir`, and return only the lines of its dev questions."""
+    code, lines, err = run("--questions-dir", str(directory))
+    assert lines[-1] == f"ok {HELDOUT}"
+    return code, lines[:-1], err
 
 
 def copy_of_questions(tmp_path: Path) -> Path:
@@ -42,11 +50,13 @@ def one_question(question_id: str, sql: str) -> str:
 
 
 def questions_dir(tmp_path: Path, dev: str, expected: dict[str, str]) -> Path:
+    """A questions directory with `dev` and one fine heldout question, so that neither file is
+    empty, which `questions.load` refuses."""
     directory = tmp_path / "questions"
     (directory / "expected").mkdir(parents=True)
     (directory / "dev.toml").write_text(dev, encoding="utf-8")
-    (directory / "heldout.toml").write_text("", encoding="utf-8")
-    for question_id, text in expected.items():
+    (directory / "heldout.toml").write_text(one_question(HELDOUT, "select 3 as n"), encoding="utf-8")
+    for question_id, text in {HELDOUT: '{"rows": [[3]]}', **expected}.items():
         (directory / "expected" / f"{question_id}.json").write_text(text, encoding="utf-8")
     return directory
 
@@ -83,6 +93,23 @@ def test_a_missing_expected_file_is_reported(seeded: Settings, tmp_path: Path) -
     assert f"MISSING {ORGANIC}" in lines
 
 
+def test_a_truncated_expected_file_is_an_error_and_not_a_missing_answer(
+    seeded: Settings, tmp_path: Path
+) -> None:
+    directory = copy_of_questions(tmp_path)
+    path = directory / "expected" / f"{ORGANIC}.json"
+    path.write_text(path.read_text(encoding="utf-8")[:-8], encoding="utf-8")
+
+    code, lines, _ = run("--questions-dir", str(directory))
+
+    assert code == 1
+    assert len(lines) == 12
+    assert not any(line.startswith("MISSING ") for line in lines)
+    error = next(line for line in lines if line.startswith(f"ERROR {ORGANIC}  "))
+    assert "not valid JSON" in error
+    assert sum(line.startswith("ok ") for line in lines) == 11
+
+
 def test_wrong_columns_are_reported(seeded: Settings, tmp_path: Path) -> None:
     directory = questions_dir(
         tmp_path,
@@ -90,12 +117,29 @@ def test_wrong_columns_are_reported(seeded: Settings, tmp_path: Path) -> None:
         {"wrong-columns": '{"rows": [[1]]}'},
     )
 
-    code, lines, _ = run("--questions-dir", str(directory))
+    code, lines, _ = run_dev(directory)
 
     assert code == 1
     assert len(lines) == 1
     assert lines[0].startswith("ERROR wrong-columns  ")
     assert "other" in lines[0]
+
+
+def test_a_key_that_does_not_identify_a_row_is_that_questions_error(
+    seeded: Settings, tmp_path: Path
+) -> None:
+    directory = questions_dir(
+        tmp_path,
+        one_question("twice", "select 1 as n union all select 1 as n"),
+        {"twice": '{"rows": [[1], [1]]}'},
+    )
+
+    code, lines, _ = run_dev(directory)
+
+    assert code == 1
+    assert len(lines) == 1
+    assert lines[0].startswith("ERROR twice  ")
+    assert "does not identify a row" in lines[0]
 
 
 def test_a_failing_query_is_that_questions_error_and_the_next_one_still_runs(
@@ -109,7 +153,7 @@ def test_a_failing_query_is_that_questions_error_and_the_next_one_still_runs(
         {"fine": '{"rows": [[2]]}'},
     )
 
-    code, lines, _ = run("--questions-dir", str(directory))
+    code, lines, _ = run_dev(directory)
 
     assert code == 1
     assert len(lines) == 2
@@ -122,7 +166,7 @@ def test_a_reference_query_cannot_write(seeded: Settings, tmp_path: Path) -> Non
     sql = "with gone as (delete from quality_incident returning 1) select count(*) as n from gone"
     directory = questions_dir(tmp_path, one_question("writer", sql), {})
 
-    code, lines, _ = run("--questions-dir", str(directory))
+    code, lines, _ = run_dev(directory)
 
     assert code == 1
     assert lines[0].startswith("ERROR writer  ")

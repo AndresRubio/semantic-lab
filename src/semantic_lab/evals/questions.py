@@ -15,6 +15,10 @@ class QuestionError(Exception):
     """A question file, a stored answer or a reference query that cannot be used."""
 
 
+class MissingAnswer(QuestionError):
+    """A question whose stored answer file does not exist."""
+
+
 @dataclass(frozen=True)
 class Question:
     id: str
@@ -51,6 +55,8 @@ def _build(raw: dict[str, object], position: int) -> Question:
     if not columns:
         raise QuestionError(f"question {identifier}: columns is empty")
     key = _strings(raw, "key", identifier)
+    if not key:
+        raise QuestionError(f"question {identifier}: key is empty, so no column identifies a row")
     for name in key:
         if name not in columns:
             raise QuestionError(f"question {identifier}: key column {name} is not in columns")
@@ -78,6 +84,8 @@ def load(path: Path) -> tuple[Question, ...]:
     raw_questions = document.get("question", [])
     if not isinstance(raw_questions, list):
         raise QuestionError(f"{path}: question must be an array of tables")
+    if not raw_questions:
+        raise QuestionError(f"{path} holds no questions")
     built: list[Question] = []
     for position, raw in enumerate(raw_questions, start=1):
         built.append(_build(raw, position))
@@ -93,9 +101,14 @@ def read_expected(directory: Path, question_id: str) -> list[list[object]]:
     path = directory / f"{question_id}.json"
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise MissingAnswer(f"question {question_id}: no stored answer at {path}") from error
     except OSError as error:
-        raise QuestionError(f"question {question_id}: no stored answer at {path}") from error
-    except json.JSONDecodeError as error:
+        raise QuestionError(
+            f"question {question_id}: cannot read {path}: {type(error).__name__}"
+        ) from error
+    except ValueError as error:
+        # A JSONDecodeError, or bytes that are not UTF-8: both are ValueError.
         raise QuestionError(f"question {question_id}: {path} is not valid JSON") from error
     rows = document.get("rows") if isinstance(document, dict) else None
     if not isinstance(rows, list) or not all(isinstance(row, list) for row in rows):
