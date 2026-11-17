@@ -10,7 +10,7 @@ from typing import Any, TextIO
 
 import psycopg
 
-from semantic_lab import config, redaction
+from semantic_lab import config, pg, redaction
 from semantic_lab.evals import questions, reference
 from semantic_lab.evals.questions import MissingAnswer, Question, QuestionError
 
@@ -32,7 +32,7 @@ def _check(
     question: Question,
     directory: Path,
     write: bool,
-    password: str,
+    dsn: str,
     out: TextIO,
 ) -> bool:
     """Run one question and print its line. A query that fails is this question's error and
@@ -54,7 +54,7 @@ def _check(
         return False
     except psycopg.Error as error:
         connection.rollback()
-        out.write(f"ERROR {question.id}  {redaction.detail(error, [password])}\n")
+        out.write(f"ERROR {question.id}  {pg.detail(error, dsn)}\n")
         return False
     connection.rollback()
     if rows == expected:
@@ -92,32 +92,27 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
         err.write(f"questions: {error}\n")
         return 1
     dsn = settings.postgres_dsn
-    password = redaction.dsn_password(dsn)
     expected_dir = args.questions_dir / "expected"
     try:
-        connection = psycopg.connect(dsn)
-    except psycopg.ProgrammingError as error:
-        err.write(f"postgres: {redaction.unparsable_detail(error, 'DSN')}\n")
-        return 1
-    except psycopg.Error as error:
-        err.write(f"postgres: {redaction.detail(error, [password])}\n")
+        connection = pg.connect(dsn)
+    except pg.ConnectError as error:
+        err.write(f"postgres: {error}\n")
         return 1
     try:
         with connection:
             # A reference query reads only. The server refuses a write in a read-only transaction.
             connection.read_only = True
             results = [
-                _check(connection, question, expected_dir, args.write_expected, password, out)
+                _check(connection, question, expected_dir, args.write_expected, dsn, out)
                 for question in every
             ]
     except psycopg.Error as error:
         # The connection itself failed in the middle of the run, not one question's query.
-        err.write(f"postgres: {redaction.detail(error, [password])}\n")
+        err.write(f"postgres: {pg.detail(error, dsn)}\n")
         return 1
     except OSError as error:
         # Only writing a stored answer touches a file once the connection is open.
-        first_line = (str(error).splitlines() or [""])[0]
-        err.write(f"questions: {type(error).__name__}: {first_line}\n")
+        err.write(f"questions: {redaction.detail(error)}\n")
         return 1
     return 0 if all(results) else 1
 

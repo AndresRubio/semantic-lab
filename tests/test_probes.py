@@ -1,4 +1,5 @@
 import httpx
+import psycopg
 import pytest
 
 from semantic_lab import probes
@@ -58,6 +59,46 @@ def test_postgres_never_puts_the_address_in_the_detail(dsn: str, secret: str) ->
 def test_postgres_with_a_malformed_dsn_names_the_class_and_quotes_nothing() -> None:
     check = probes.postgres("postgresql://lab:pa%zzword@127.0.0.1:1/lab", timeout=2)
     assert check.detail == "ProgrammingError: invalid DSN"
+
+
+class FakeConnection:
+    def __init__(self, error: Exception | None = None) -> None:
+        self.error = error
+        self.closed = False
+
+    def __enter__(self) -> "FakeConnection":
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.closed = True
+
+    def execute(self, sql: str) -> None:
+        if self.error is not None:
+            raise self.error
+
+
+def test_postgres_reports_a_programming_error_from_the_query_as_itself(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failing = FakeConnection(psycopg.errors.UndefinedTable("no table for hunter2-secret"))
+    monkeypatch.setattr(probes.pg, "connect", lambda dsn, timeout: failing)
+    check = probes.postgres("postgresql://lab:hunter2-secret@127.0.0.1:1/lab")
+    assert check == probes.Check("postgres", False, "UndefinedTable: no table for ***")
+    assert failing.closed
+
+
+def test_postgres_connects_with_the_timeout_it_is_given(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[int] = []
+
+    def connect(dsn: str, timeout: int) -> FakeConnection:
+        seen.append(timeout)
+        return FakeConnection()
+
+    monkeypatch.setattr(probes.pg, "connect", connect)
+    assert probes.postgres("postgresql://lab:x@127.0.0.1:1/lab", timeout=2.7) == probes.Check(
+        "postgres", True, "select 1"
+    )
+    assert seen == [2]
 
 
 @pytest.mark.parametrize(

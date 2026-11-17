@@ -5,11 +5,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 import httpx
-import psycopg
 from neo4j import GraphDatabase
 from neo4j.exceptions import ConfigurationError
 
-from semantic_lab import redaction
+from semantic_lab import pg, redaction
 from semantic_lab.config import Settings
 from semantic_lab.semantic import token
 
@@ -31,12 +30,12 @@ def _unparsable(service: str, error: Exception, what: str) -> Check:
 
 def postgres(dsn: str, timeout: float = 5.0) -> Check:
     try:
-        with psycopg.connect(dsn, connect_timeout=max(1, int(timeout))) as connection:
+        with pg.connect(dsn, int(timeout)) as connection:
             connection.execute("select 1")
-    except psycopg.ProgrammingError as error:
-        return _unparsable("postgres", error, "DSN")
+    except pg.ConnectError as error:
+        return Check("postgres", False, str(error))
     except Exception as error:
-        return _failure("postgres", error, [redaction.dsn_password(dsn)])
+        return Check("postgres", False, pg.detail(error, dsn))
     return Check("postgres", True, "select 1")
 
 

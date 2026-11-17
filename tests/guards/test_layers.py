@@ -57,9 +57,21 @@ def test_each_layer_imports_only_what_the_table_allows() -> None:
     assert problems == []
 
 
+def test_no_layer_package_imports_the_connection_helper_or_the_probes() -> None:
+    problems = []
+    for path in sorted(SRC.rglob("*.py")):
+        package = package_of(path)
+        if package in (None, "commands"):
+            continue
+        for module in imported_modules(path):
+            if ours(module) in ("pg", "probes"):
+                problems.append(f"{path.name} ({package}) imports {module}")
+    assert problems == []
+
+
 def test_top_level_modules_do_not_import_commands() -> None:
     modules = top_level_modules()
-    assert {path.name for path in modules} >= {"config.py", "probes.py", "redaction.py"}
+    assert {path.name for path in modules} >= {"config.py", "pg.py", "probes.py", "redaction.py"}
     problems = [
         f"{path.name} imports {module}"
         for path in modules

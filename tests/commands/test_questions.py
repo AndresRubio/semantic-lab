@@ -83,7 +83,7 @@ def test_a_write_failure_is_reported_in_one_line(
     for name in questions.FILES:
         shutil.copy(ROOT / "questions" / name, tmp_path / name)
     (tmp_path / "expected").write_text("a file where the directory should be", encoding="utf-8")
-    monkeypatch.setattr(questions.psycopg, "connect", lambda dsn: FakeConnection())
+    monkeypatch.setattr(questions.pg, "connect", lambda dsn: FakeConnection())
     monkeypatch.setattr(questions.reference, "run_sql", lambda connection, question: [[1]])
     out, err = io.StringIO(), io.StringIO()
 

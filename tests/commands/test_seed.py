@@ -94,7 +94,7 @@ def test_a_programming_error_in_the_rebuild_is_reported_as_itself(monkeypatch) -
     def fail(*args: object) -> dict[str, int]:
         raise psycopg.errors.UndefinedTable("relation \"concept\" does not exist")
 
-    monkeypatch.setattr(seed.psycopg, "connect", lambda dsn: FakeConnection())
+    monkeypatch.setattr(seed.pg, "connect", lambda dsn: FakeConnection())
     monkeypatch.setattr(seed.load, "rebuild", fail)
     out, err = io.StringIO(), io.StringIO()
     assert seed.main([], down_env(), out, err) == 1

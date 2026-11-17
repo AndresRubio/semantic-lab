@@ -26,12 +26,14 @@ every other module imports only the standard library, `semantic_lab.domain` and 
 `agent/` have no line yet: the unit that adds each one settles which packages it imports,
 writes that down here and adds it to the test.
 
-Three modules sit at the top level beside the layer packages: `config.py`, `probes.py` and
-`redaction.py`. `commands/` and the tests import them. The layer packages do not import
-`probes`. `probes.cube` asks Cube's metadata endpoint itself today. Unit 5 adds the Cube
-client to `semantic/` and decides whether the probe goes through that client. `redaction.py`
-turns an exception into one line that holds no credential, and `probes.py` and the two
-commands that open a Postgres connection share it.
+Four modules sit at the top level beside the layer packages: `config.py`, `pg.py`, `probes.py`
+and `redaction.py`. `commands/` and the tests import them. The layer packages do not import
+`pg` or `probes`, and `tests/guards/test_layers.py` checks it. `pg.py` opens every Postgres
+connection, with a connect timeout and an error line that holds no credential, so a command
+and a probe fail the same way. `probes.cube` asks Cube's metadata endpoint itself today. Unit 5
+adds the Cube client to `semantic/` and decides whether the probe goes through that client.
+`redaction.py` turns an exception into one line that holds no credential, and `pg.py`,
+`probes.py` and the commands share it.
 
 The design settles no other direction. The unit that adds a package settles which packages it
 imports, writes that down here and adds a test for it.

@@ -9,7 +9,7 @@ from typing import TextIO
 
 import psycopg
 
-from semantic_lab import config, redaction
+from semantic_lab import config, pg
 from semantic_lab.domain.errors import GenerationError, TaxonomyError
 from semantic_lab.rdf.taxonomy import load_taxonomy
 from semantic_lab.seed import load
@@ -41,21 +41,16 @@ def main(argv: Sequence[str], env: Mapping[str, str], out: TextIO, err: TextIO) 
         err.write(f"seed: {error}\n")
         return 1
     dsn = settings.postgres_dsn
-    secrets = [redaction.dsn_password(dsn)]
     try:
-        connection = psycopg.connect(dsn)
-    except psycopg.ProgrammingError as error:
-        # Only the connect step can fail on an unparsable DSN, and that message quotes it.
-        err.write(f"postgres: {redaction.unparsable_detail(error, 'DSN')}\n")
-        return 1
-    except psycopg.Error as error:
-        err.write(f"postgres: {redaction.detail(error, secrets)}\n")
+        connection = pg.connect(dsn)
+    except pg.ConnectError as error:
+        err.write(f"postgres: {error}\n")
         return 1
     try:
         with connection:
             counts = load.rebuild(connection, taxonomy, dataset)
     except psycopg.Error as error:
-        err.write(f"postgres: {redaction.detail(error, secrets)}\n")
+        err.write(f"postgres: {pg.detail(error, dsn)}\n")
         return 1
     for table in load.TABLES:
         out.write(f"{table}  {counts[table]}\n")
