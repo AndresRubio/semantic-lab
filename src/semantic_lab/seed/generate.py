@@ -6,6 +6,7 @@ from dataclasses import fields
 
 from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.taxonomy import Taxonomy
+from semantic_lab.seed import requirements
 from semantic_lab.seed.sales import generate_sales
 from semantic_lab.seed.supply import generate_supply
 
@@ -13,6 +14,7 @@ DEFAULT_SEED = 20240101
 
 
 def generate(taxonomy: Taxonomy, seed: int) -> Dataset:
+    requirements.check(taxonomy)
     rng = random.Random(seed)
     supply = generate_supply(taxonomy, rng)
     sales = generate_sales(supply, rng)

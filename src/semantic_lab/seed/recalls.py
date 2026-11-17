@@ -21,7 +21,7 @@ def reach_recalled(drafted: Drafted, batches: Batches, rng: random.Random) -> No
     customers a lot reaches is the target drawn here. A seed with too few matching orders raises
     `GenerationError`.
     """
-    by_code = {b.code: b for b in batches.roast_batches}
+    by_code = {b.code: b for b in batches.planned}
     lines_of_product: dict[str, list[Draft]] = defaultdict(list)
     for line in drafted.lines:
         lines_of_product[line.product_code].append(line)

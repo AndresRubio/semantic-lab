@@ -85,8 +85,9 @@ A change to the generator changes the rows, so it changes the pinned digest in
 in-memory dataset, so it fails until the answers are produced again. A change to the concepts of
 a taxonomy (a leaf, a region or a process added, removed or renamed by key) changes the digest and
 the answers as well, because the generator draws from them. A change to an alternative label does
-not. Produce the answers against the test stack, never the development stack, one command per
-call:
+not. Moving to another Python minor version can change them in the same way, because the draw
+sequence of `random` is not promised across minor versions. Produce the answers against the test
+stack, never the development stack, one command per call:
 
 ```bash
 docker compose -p semantic-lab-test -f compose.yaml --env-file tests/stack.env up -d

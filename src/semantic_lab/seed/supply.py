@@ -8,6 +8,7 @@ build the rest.
 import random
 from dataclasses import dataclass
 from datetime import date, timedelta
+from itertools import product
 
 from semantic_lab.domain.errors import GenerationError
 from semantic_lab.domain.records import (
@@ -167,12 +168,19 @@ def _certifications(
 
 
 def _farms(cooperatives: tuple[Cooperative, ...], rng: random.Random) -> tuple[Farm, ...]:
+    # The names are drawn without replacement from the sorted combinations, so no two farms
+    # share one and the draw does not depend on the order of the tables.
+    names = rng.sample(
+        sorted(product(FARM_PREFIXES, FARM_PLACES)), len(cooperatives) * FARMS_PER_COOPERATIVE
+    )
     rows = []
     for cooperative_index, cooperative in enumerate(cooperatives):
         for slot in range(FARMS_PER_COOPERATIVE):
-            number = cooperative_index * FARMS_PER_COOPERATIVE + slot + 1
-            name = f"{rng.choice(FARM_PREFIXES)} {rng.choice(FARM_PLACES)}"
-            rows.append(Farm(f"F-{number:03d}", name, cooperative.code, rng.randint(900, 2200)))
+            number = cooperative_index * FARMS_PER_COOPERATIVE + slot
+            prefix, place = names[number]
+            rows.append(
+                Farm(f"F-{number + 1:03d}", f"{prefix} {place}", cooperative.code, rng.randint(900, 2200))
+            )
     return tuple(rows)
 
 

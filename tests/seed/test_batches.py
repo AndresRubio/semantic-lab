@@ -1,9 +1,17 @@
+import random
 from collections import defaultdict
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from itertools import product
 
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import planted
+from semantic_lab.seed.batches import (
+    Batches,
+    PlannedBatch,
+    finish_batches,
+    share_hundredths,
+)
 from tests.support.seed import (
     CENTS,
     ONE_LOT_CATEGORIES,
@@ -13,6 +21,7 @@ from tests.support.seed import (
     lot_regions,
     lots_of_batches,
     product_named,
+    sold_kg,
 )
 
 
@@ -78,7 +87,6 @@ def test_a_batch_is_roasted_in_range_and_after_its_lots_arrive(world: World) -> 
     lots = lots_of_batches(world.sales)
     for batch in world.sales.roast_batches:
         assert date(2024, 1, 2) <= batch.roasted_on <= date(2025, 12, 28), batch.code
-        assert Decimal("60") <= batch.output_kg <= Decimal("400"), batch.code
         assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
         for lot_code, _ in lots[batch.code]:
             assert arrival[lot_code] < batch.roasted_on, batch.code
@@ -136,3 +144,90 @@ def test_alba_and_brisa_share_exactly_three_farms(world: World) -> None:
     assert len(alba & brisa) == planted.SHARED_FARMS
     assert len(alba) >= 5
     assert len(brisa) >= 5
+
+
+def test_no_batch_sells_more_than_its_output(world: World) -> None:
+    sold = sold_kg(world.sales)
+    assert sold
+    for batch in world.sales.roast_batches:
+        assert sold.get(batch.code, Decimal(0)) <= batch.output_kg, batch.code
+
+
+def test_a_sold_batch_keeps_between_2_and_20_percent_unsold(world: World) -> None:
+    sold = sold_kg(world.sales)
+    checked = 0
+    for batch in world.sales.roast_batches:
+        if batch.code not in sold:
+            continue
+        checked += 1
+        kept = sold[batch.code]
+        assert kept * Decimal("1.02") <= batch.output_kg, batch.code
+        # Rounding the output up to the cent adds less than one cent.
+        assert batch.output_kg - CENTS < kept * Decimal("1.20"), batch.code
+        assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
+    assert checked > 1000
+
+
+def test_an_unsold_batch_has_an_output_in_the_drawn_range(world: World) -> None:
+    sold = sold_kg(world.sales)
+    unsold = [b for b in world.sales.roast_batches if b.code not in sold]
+    assert unsold
+    for batch in unsold:
+        assert Decimal("60") <= batch.output_kg <= Decimal("400"), batch.code
+        assert batch.output_kg == batch.output_kg.quantize(CENTS), batch.code
+
+
+class FixedUnsoldPercent(random.Random):
+    """Draws the lowest value of any range, so the unsold percentage is 2."""
+
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+
+def planned(code: str) -> PlannedBatch:
+    return PlannedBatch(code, "P-01", date(2024, 1, 2), Decimal("9.50"))
+
+
+def test_finish_batches_rounds_the_output_up_to_the_cent() -> None:
+    batches = Batches((planned("B-0001"), planned("B-0002")), ())
+    finished = finish_batches(
+        batches, {"B-0001": Decimal("10.001"), "B-0002": Decimal("50.000")}, FixedUnsoldPercent()
+    )
+    # 10.001 * 1.02 = 10.20102, which rounds up to 10.21 where nearest would give 10.20.
+    assert [(b.code, b.output_kg) for b in finished] == [
+        ("B-0001", Decimal("10.21")),
+        ("B-0002", Decimal("51.00")),
+    ]
+    assert finished[0].product_code == "P-01"
+    assert finished[0].roasted_on == date(2024, 1, 2)
+    assert finished[0].cost_per_kg == Decimal("9.50")
+
+
+def test_finish_batches_never_gives_less_than_what_was_sold() -> None:
+    rng = random.Random(11)
+    sales = {
+        f"B-{n:04d}": Decimal(rng.randint(1, 5_000_000)) / 1000 for n in range(1, 2001)
+    }
+    batches = Batches(tuple(planned(code) for code in sales), ())
+    for batch in finish_batches(batches, sales, rng):
+        assert batch.output_kg >= sales[batch.code] * Decimal("1.02"), batch.code
+
+
+def test_a_batch_with_no_sales_draws_its_output_from_the_range() -> None:
+    batches = Batches(tuple(planned(f"B-{n:04d}") for n in range(1, 301)), ())
+    finished = finish_batches(batches, {}, random.Random(4))
+    assert all(Decimal("60") <= b.output_kg <= Decimal("400") for b in finished)
+    assert len({b.output_kg for b in finished}) > 100
+
+
+def test_the_smallest_share_of_a_blend_is_3_hundredths() -> None:
+    # The smallest weight against the largest ones, for the most lots a blend can have:
+    # 100 // (1 + 3 * 10) = 3. The first share also takes the rounding remainder, so no share
+    # of any weight combination goes below it.
+    smallest = 100
+    for count in (2, 3, 4):
+        for weights in product(range(1, 11), repeat=count):
+            hundredths = share_hundredths(list(weights))
+            assert sum(hundredths) == 100
+            smallest = min(smallest, *hundredths)
+    assert smallest == 3

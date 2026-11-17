@@ -3,14 +3,18 @@
 A batch may only use lots whose shipment arrived before the roasting day. The recalled lots
 are used by the batches planned for them and by no other, so how many batches a recall
 touches is decided here and not left to chance.
+
+Cumbre roasts to demand, so a batch's output is known only once the orders exist.
+`generate_batches` plans the batches and `finish_batches` sets each output from what was sold.
 """
 
 import random
 from bisect import bisect_left
 from collections import Counter
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 
 from semantic_lab.domain.records import Product, RoastBatch, RoastBatchLot
 from semantic_lab.seed import planted
@@ -24,7 +28,11 @@ LAST_ROAST_DAY = date(2025, 12, 28)
 # The first batch of each product falls in the first FIRST_BATCH_DAYS days, so orders can start
 # on day one with ten products on offer.
 FIRST_BATCH_DAYS = 4
+# The output of a batch nobody ordered from, in hundredths of a kilogram.
 OUTPUT_HUNDREDTHS = (6000, 40000)
+# A batch that sold keeps this many percent of what it sold, at the least and at the most, as an
+# unsold remainder.
+UNSOLD_PERCENT = (2, 20)
 ROAST_YIELD = Decimal("0.85")
 BLEND_LOTS = (2, 4)
 MAX_BLEND_WEIGHT = 10
@@ -35,8 +43,18 @@ RECALL_LEAD_DAYS = 30
 
 
 @dataclass(frozen=True)
+class PlannedBatch:
+    """A batch before its output is known."""
+
+    code: str
+    product_code: str
+    roasted_on: date
+    cost_per_kg: Decimal
+
+
+@dataclass(frozen=True)
 class Batches:
-    roast_batches: tuple[RoastBatch, ...]
+    planned: tuple[PlannedBatch, ...]
     roast_batch_lots: tuple[RoastBatchLot, ...]
 
 
@@ -121,15 +139,43 @@ def generate_batches(supply: Supply, rng: random.Random) -> Batches:
         for lot, share in sorted(zip(lots, shares, strict=True)):
             links.append(RoastBatchLot(code, lot, share))
         batches.append(
-            RoastBatch(
+            PlannedBatch(
                 code=code,
                 product_code=product.code,
                 roasted_on=plan.roasted_on,
-                output_kg=decimal_from_hundredths(rng.randint(*OUTPUT_HUNDREDTHS)),
                 cost_per_kg=_cost_per_kg(price, lots, shares),
             )
         )
     return Batches(tuple(batches), tuple(links))
+
+
+def finish_batches(
+    batches: Batches, sold_kg: Mapping[str, Decimal], rng: random.Random
+) -> tuple[RoastBatch, ...]:
+    """The batches with their output, in the order they were planned.
+
+    A batch that sold gets what it sold plus an unsold remainder of `UNSOLD_PERCENT` of it,
+    rounded up to the cent so the output never falls below the sales. A batch nobody ordered
+    from gets a drawn output.
+    """
+    finished = []
+    for batch in batches.planned:
+        sold = sold_kg.get(batch.code)
+        if sold is None:
+            output_kg = decimal_from_hundredths(rng.randint(*OUTPUT_HUNDREDTHS))
+        else:
+            percent = 100 + rng.randint(*UNSOLD_PERCENT)
+            output_kg = (sold * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
+        finished.append(
+            RoastBatch(
+                code=batch.code,
+                product_code=batch.product_code,
+                roasted_on=batch.roasted_on,
+                output_kg=output_kg,
+                cost_per_kg=batch.cost_per_kg,
+            )
+        )
+    return tuple(finished)
 
 
 def recalled_batches(batches: Batches) -> dict[str, tuple[str, ...]]:
@@ -180,13 +226,24 @@ def _blend_lots(
 
 
 def _shares(count: int, rng: random.Random) -> list[Decimal]:
-    """`count` shares in hundredths that sum to exactly 1, each at least 0.02."""
+    """`count` shares that sum to exactly 1, each at least 0.03.
+
+    The smallest share comes from the smallest weight against the largest: with the most lots
+    a blend can have (`BLEND_LOTS[1]`), that is 100 // (1 + 3 * MAX_BLEND_WEIGHT) = 3
+    hundredths. The first share also takes the rounding remainder, so it only grows.
+    """
     if count == 1:
         return [Decimal("1.00")]
     weights = [rng.randint(1, MAX_BLEND_WEIGHT) for _ in range(count)]
+    return [decimal_from_hundredths(h) for h in share_hundredths(weights)]
+
+
+def share_hundredths(weights: Sequence[int]) -> list[int]:
+    """Shares in hundredths proportional to `weights`, summing to 100, the first one taking the
+    remainder of the integer division."""
     hundredths = [100 * weight // sum(weights) for weight in weights]
     hundredths[0] += 100 - sum(hundredths)
-    return [decimal_from_hundredths(h) for h in hundredths]
+    return hundredths
 
 
 def _cost_per_kg(price: dict[str, Decimal], lots: list[str], shares: list[Decimal]) -> Decimal:

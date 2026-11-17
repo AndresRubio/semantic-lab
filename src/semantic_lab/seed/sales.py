@@ -2,11 +2,13 @@
 
 Everything here is a pure function of the supply and the random generator passed in. Batches
 are planned in `batches`, orders in `orders`, and `recalls` ties the recalled lots to
-customers.
+customers. A batch's output is set last, from what its order lines took.
 """
 
 import random
+from collections import defaultdict
 from dataclasses import dataclass
+from decimal import Decimal
 
 from semantic_lab.domain.records import (
     Customer,
@@ -17,7 +19,7 @@ from semantic_lab.domain.records import (
     SalesOrder,
 )
 from semantic_lab.seed import planted
-from semantic_lab.seed.batches import generate_batches
+from semantic_lab.seed.batches import finish_batches, generate_batches
 from semantic_lab.seed.orders import draft_orders, finish_orders, generate_customers
 from semantic_lab.seed.recalls import reach_recalled
 from semantic_lab.seed.supply import Supply
@@ -44,14 +46,22 @@ def generate_sales(supply: Supply, rng: random.Random) -> Sales:
     drafted = draft_orders(supply.products, customers, batches, rng)
     reach_recalled(drafted, batches, rng)
     orders, lines = finish_orders(drafted, supply.products)
+    roast_batches = finish_batches(batches, _sold_kg(lines), rng)
     return Sales(
-        roast_batches=batches.roast_batches,
+        roast_batches=roast_batches,
         roast_batch_lots=batches.roast_batch_lots,
         customers=customers,
         orders=orders,
         order_lines=lines,
         quality_incidents=_incidents(),
     )
+
+
+def _sold_kg(lines: tuple[OrderLine, ...]) -> dict[str, Decimal]:
+    sold: dict[str, Decimal] = defaultdict(Decimal)
+    for line in lines:
+        sold[line.roast_batch_code] += line.kg
+    return dict(sold)
 
 
 def _incidents() -> tuple[QualityIncident, ...]:

@@ -17,6 +17,8 @@ COOPERATIVE_NAMES = (
     "Campo Real",
     "Nube Roja",
 )
+# A farm's name is a prefix and a place. The 4 prefixes and 40 places give 160 combinations, and
+# the 120 farms take theirs without replacement.
 FARM_PREFIXES = ("Finca", "Hacienda", "Parcela", "Rancho")
 FARM_PLACES = (
     "El Mirador",
@@ -31,6 +33,34 @@ FARM_PLACES = (
     "La Palma",
     "El Recuerdo",
     "Buenavista",
+    "El Paraiso",
+    "La Esperanza",
+    "Monte Verde",
+    "Los Naranjos",
+    "San Jose",
+    "Santa Ana",
+    "El Sauce",
+    "La Granja",
+    "Las Palmas",
+    "El Encanto",
+    "Los Andes",
+    "San Miguel",
+    "La Joya",
+    "El Manantial",
+    "Los Robles",
+    "San Antonio",
+    "La Florida",
+    "El Porvenir",
+    "Las Flores",
+    "Santa Clara",
+    "El Naranjal",
+    "La Colina",
+    "Los Cedros",
+    "San Isidro",
+    "El Higueron",
+    "La Primavera",
+    "Las Brisas",
+    "El Silencio",
 )
 VARIETIES = (
     "Bourbon",

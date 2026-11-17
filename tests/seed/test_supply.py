@@ -5,6 +5,7 @@ from datetime import date
 from semantic_lab.domain.records import Lot
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.seed import planted
+from semantic_lab.seed.names import FARM_PLACES, FARM_PREFIXES
 from semantic_lab.seed.supply import Supply, generate_supply
 from tests.support.seed import lot_countries
 
@@ -23,6 +24,17 @@ def test_counts_and_codes(supply: Supply) -> None:
     farms_per_cooperative = Counter(f.cooperative_code for f in supply.farms)
     assert set(farms_per_cooperative.values()) == {8}
     assert len(farms_per_cooperative) == 15
+
+
+def test_farm_names_are_unique(supply: Supply) -> None:
+    names = [farm.name for farm in supply.farms]
+    assert len(names) == len(set(names)) == 120
+
+
+def test_the_farm_name_tables_give_at_least_150_combinations() -> None:
+    assert len(set(FARM_PREFIXES)) == len(FARM_PREFIXES)
+    assert len(set(FARM_PLACES)) == len(FARM_PLACES)
+    assert len(FARM_PREFIXES) * len(FARM_PLACES) >= 150
 
 
 def test_every_country_has_two_cooperatives_or_more(

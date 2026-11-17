@@ -12,8 +12,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 from itertools import accumulate
 
-from semantic_lab.domain.records import Customer, OrderLine, Product, RoastBatch, SalesOrder
-from semantic_lab.seed.batches import Batches, recalled_batches
+from semantic_lab.domain.records import Customer, OrderLine, Product, SalesOrder
+from semantic_lab.seed.batches import Batches, PlannedBatch, recalled_batches
 from semantic_lab.seed.names import CUSTOMER_CITIES, CUSTOMER_PREFIXES, CUSTOMER_WORDS
 
 SEGMENT_COUNTS = (("cafe", 130), ("shop", 100), ("restaurant", 70))
@@ -55,7 +55,7 @@ class Drafted:
 class _Shelf:
     """The ordinary batches of each product by roasting day: what a line can be filled from."""
 
-    def __init__(self, batches: tuple[RoastBatch, ...], excluded: set[str]) -> None:
+    def __init__(self, batches: tuple[PlannedBatch, ...], excluded: set[str]) -> None:
         self._days: dict[str, list[date]] = {}
         self._codes: dict[str, list[str]] = {}
         for batch in batches:
@@ -92,7 +92,7 @@ def draft_orders(
     batches: Batches,
     rng: random.Random,
 ) -> Drafted:
-    shelf = _Shelf(batches.roast_batches, _recalled_codes(batches))
+    shelf = _Shelf(batches.planned, _recalled_codes(batches))
     span = (LAST_ORDER_DAY - FIRST_ORDER_DAY).days + 1
     days = [FIRST_ORDER_DAY + timedelta(days=i) for i in range(span)]
     dates = sorted(

@@ -1,10 +1,13 @@
 import dataclasses
 
+import pytest
+
+from semantic_lab.domain.errors import GenerationError
 from semantic_lab.domain.records import Dataset
-from semantic_lab.domain.taxonomy import Taxonomy
+from semantic_lab.domain.taxonomy import Concept, Taxonomy, build_taxonomy
 from semantic_lab.seed import generate
 
-PINNED = "6059e29ee1743b17453a0eaf3aa1967740c0626184ab93a566bc17321e130daf"
+PINNED = "f7d93173cd5b845b501852178b013cd8cce9a45dd9ac8c35261f65808efd7180"
 
 
 def test_every_reference_resolves(dataset: Dataset, taxonomy: Taxonomy) -> None:
@@ -55,3 +58,19 @@ def test_another_seed_another_digest(dataset: Dataset, taxonomy: Taxonomy) -> No
 
 def test_the_default_digest_is_pinned(dataset: Dataset) -> None:
     assert generate.digest(dataset) == PINNED
+
+
+def test_a_taxonomy_the_generator_cannot_build_from_is_refused_before_any_draw(
+    taxonomy: Taxonomy,
+) -> None:
+    extra = Concept(
+        "process.carbonic-maceration",
+        "process",
+        "https://example.org/process/carbonic-maceration",
+        "Carbonic maceration",
+        "Maceracion carbonica",
+        (),
+        None,
+    )
+    with pytest.raises(GenerationError, match=r"process\.carbonic-maceration"):
+        generate.generate(build_taxonomy([*taxonomy.concepts, extra]), generate.DEFAULT_SEED)

@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "A lab for comparing semantic layers over the same data."
 readme = "README.md"
 license = { text = "MIT" }
-requires-python = ">=3.13"
+# The pinned dataset digest depends on the draw sequence of this minor version's `random` module,
+# so the project stays on one minor version.
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "httpx",
     "psycopg[binary]",

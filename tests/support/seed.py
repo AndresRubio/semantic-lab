@@ -60,6 +60,14 @@ def lots_of_batches(sales: Sales) -> dict[str, list[tuple[str, Decimal]]]:
     return found
 
 
+def sold_kg(sales: Sales) -> dict[str, Decimal]:
+    """The kilograms on the order lines of each batch that has any."""
+    found: dict[str, Decimal] = defaultdict(Decimal)
+    for line in sales.order_lines:
+        found[line.roast_batch_code] += line.kg
+    return dict(found)
+
+
 def lines_by_order(sales: Sales) -> dict[str, list[OrderLine]]:
     found: dict[str, list[OrderLine]] = defaultdict(list)
     for line in sales.order_lines:

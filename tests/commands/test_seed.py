@@ -121,3 +121,29 @@ def test_a_taxonomy_the_generator_cannot_use_exits_1_with_one_line_before_any_co
     assert len(err.getvalue().splitlines()) == 1
     assert "postgres:" not in err.getvalue()
     assert out.getvalue() == ""
+
+
+def test_a_taxonomy_with_a_process_the_generator_has_no_weight_for_exits_1_in_one_line(
+    tmp_path: Path,
+) -> None:
+    for source in TAXONOMY.glob("*.ttl"):
+        shutil.copy(source, tmp_path / source.name)
+    process = tmp_path / "process.ttl"
+    process.write_text(
+        process.read_text(encoding="utf-8")
+        + """
+process:carbonic-maceration a skos:Concept ;
+    skos:notation "process.carbonic-maceration" ;
+    skos:prefLabel "Carbonic maceration"@en, "Maceracion carbonica"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+""",
+        encoding="utf-8",
+    )
+    out, err = io.StringIO(), io.StringIO()
+    code = seed.main(["--taxonomy-dir", str(tmp_path)], down_env(), out, err)
+    assert code == 1
+    assert err.getvalue().startswith("seed: ")
+    assert "process.carbonic-maceration" in err.getvalue()
+    assert len(err.getvalue().splitlines()) == 1
+    assert "postgres:" not in err.getvalue()
+    assert out.getvalue() == ""

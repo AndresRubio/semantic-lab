@@ -75,12 +75,15 @@ Measured on 2026-11-16 on the same Mac, on the test stack (`semantic-lab-test`, 
 7475, 7688 and 4001), never the development stack. The stack was started with
 `docker compose -p semantic-lab-test -f compose.yaml --env-file tests/stack.env up -d`. The
 smoke command printed three `ok` lines on its first run, and the seed ran once against the
-fresh Postgres. The numbers below were measured again after the processing methods were
-weighted (washed 50 of 100), the same day.
+fresh Postgres. The numbers below were measured again on 2026-11-17, after the roast batches
+were made to follow demand and the farm names made unique.
 
 - Seed time: `time uv run --env-file tests/stack.env python -m semantic_lab.commands.seed`
-  took 1.98 s of wall time (0.66 s of user time). It generates the dataset, drops and creates
-  the 17 tables and copies the rows in one transaction.
+  took 8.47 s of wall time on the first run and 7.79 s on a second (1.09 s and 1.00 s of user
+  time). It generates the dataset, drops and creates the 17 tables and copies the rows in one
+  transaction. The Mac's load average was above 27 from other containers during both runs, so
+  the wall time includes waiting for a CPU. The earlier reading of 1.98 s (0.66 s of user time)
+  came from a quiet machine, and the dataset is no larger now.
 - Database size: `select pg_size_pretty(pg_database_size(current_database()))`, run through
   `exec -T postgres psql` after the seed, printed `19 MB`.
 - Postgres memory: `docker stats --no-stream` right after the seed showed the Postgres
@@ -99,11 +102,11 @@ DEFAULT_SEED)` and equal to the seed command's output:
 | `farm` | 120 |
 | `shipment` | 80 |
 | `lot` | 600 |
-| `lot_farm` | 1,213 |
+| `lot_farm` | 1,194 |
 | `product` | 40 |
 | `product_flavour` | 81 |
 | `roast_batch` | 3,000 |
-| `roast_batch_lot` | 4,564 |
+| `roast_batch_lot` | 4,527 |
 | `customer` | 300 |
 | `sales_order` | 20,000 |
 | `order_line` | 60,000 |
@@ -113,10 +116,19 @@ DEFAULT_SEED)` and equal to the seed command's output:
 | `concept_closure` | 162 |
 
 The pinned sha256 digest of the default seed's rows, `PINNED` in `tests/seed/test_generate.py`,
-is `6059e29ee1743b17453a0eaf3aa1967740c0626184ab93a566bc17321e130daf`.
+is `f7d93173cd5b845b501852178b013cd8cce9a45dd9ac8c35261f65808efd7180`. It is the same under
+`PYTHONHASHSEED=0` and `PYTHONHASHSEED=1`.
 
-Revenue for 2025 totals 9,407,452.44 euros whichever way it is cut. The three stored answers
+Revenue for 2025 totals 9,613,814.74 euros whichever way it is cut. The three stored answers
 `questions/expected/metric-revenue-by-country-2025.json` (six countries),
 `hierarchy-revenue-by-continent-2025.json` (three continents) and
 `metric-revenue-by-quarter-2025.json` (four quarters) each sum to that figure when added with
 `Decimal`. The sums were checked by hand-run Python, not by the questions command.
+
+Roast batches follow demand: a batch's output is what was sold from it plus an unsold remainder
+of 2 to 20 percent of that, rounded up to the cent, and a batch nobody ordered from gets a drawn
+output of 60 to 400 kg. Read from `generate(taxonomy, DEFAULT_SEED)`, no batch sells more than
+its output, where the share was 876 of 3,000 before the change (0 of 3,000 now). The 26 batches
+with no sales hold the drawn outputs. Across all 3,000 batches the largest `output_kg` is
+1,978.80 kg and the median is 121.435 kg (the mean of the two middle values), and the smallest
+is 0.29 kg, a batch whose only sale was one small bag.
