@@ -1,8 +1,10 @@
 import pytest
 from rdflib import Graph
+from rdflib.namespace import SH
 
 from semantic_lab.domain.errors import OntologyError
-from semantic_lab.rdf.shacl import Violation, validate
+from semantic_lab.domain.ontology import NAMESPACE
+from semantic_lab.rdf.shacl import Violation, data_shapes, validate
 
 PREFIXES = """@prefix sh: <http://www.w3.org/ns/shacl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -85,6 +87,51 @@ def test_a_malformed_shape_raises_an_error_that_starts_with_shapes() -> None:
     shapes = graph(SHAPES.replace("sh:minCount 1", 'sh:minCount "many"'))
     with pytest.raises(OntologyError, match=r"^shapes: [^\n]+$"):
         validate(graph("ex:a a ex:Thing ."), shapes)
+
+
+def sparql_rule(where: str) -> Graph:
+    return graph(
+        SHAPES
+        + f"""
+ex:ThingShape sh:sparql [
+    sh:message "A rule." ;
+    sh:select \"\"\" SELECT $this WHERE {{ {where} }} \"\"\" ] .
+"""
+    )
+
+
+def test_a_sparql_rule_with_a_syntax_error_raises_an_error_that_starts_with_validation() -> None:
+    shapes = sparql_rule("$this ex:name ?name . FILTER (")
+    with pytest.raises(OntologyError, match=r"^validation: ParseException: [^\n]+$"):
+        validate(graph('ex:a a ex:Thing ; ex:name "a" .'), shapes)
+
+
+def test_a_sparql_rule_with_an_undeclared_prefix_raises_an_error_that_starts_with_validation() -> (
+    None
+):
+    shapes = sparql_rule("$this nope:name ?name .")
+    with pytest.raises(OntologyError, match=r"^validation: Exception: [^\n]*nope[^\n]*$"):
+        validate(graph('ex:a a ex:Thing ; ex:name "a" .'), shapes)
+
+
+def test_the_data_shapes_target_the_fourteen_classes_and_nothing_else(shapes: Graph) -> None:
+    group = data_shapes(shapes, NAMESPACE)
+    targets = set(group.objects(None, SH.targetClass))
+    assert len(targets) == 14
+    assert all(str(target).startswith(NAMESPACE) for target in targets)
+    for kind in (SH.targetSubjectsOf, SH.targetObjectsOf, SH.targetNode):
+        assert not set(group.objects(None, kind)), kind
+
+
+def test_the_data_shapes_keep_what_their_sparql_rules_name(shapes: Graph) -> None:
+    group = data_shapes(shapes, NAMESPACE)
+    for header in group.objects(None, SH.prefixes):
+        assert set(group.objects(header, SH.declare)) == set(shapes.objects(header, SH.declare))
+        for declaration in shapes.objects(header, SH.declare):
+            assert set(group.predicate_objects(declaration)) == set(
+                shapes.predicate_objects(declaration)
+            )
+    assert set(group.objects(None, SH.prefixes))
 
 
 def test_a_subclass_is_reported_by_its_parents_shape_only_with_the_ontology_graph() -> None:

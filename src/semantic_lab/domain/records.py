@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import date
 from decimal import Decimal
 from typing import Any, get_args, get_type_hints
@@ -172,6 +172,11 @@ def _attribute(table: str) -> str:
 def record_type(table: str) -> type[Any]:
     """The record class of a data table. A name that is no data table is a KeyError."""
     return get_args(get_type_hints(Dataset)[_attribute(table)])[0]
+
+
+def columns(table: str) -> tuple[str, ...]:
+    """The columns of a data table: its record class's fields, in order. A KeyError if no table."""
+    return tuple(field.name for field in fields(record_type(table)))
 
 
 def rows(dataset: Dataset, table: str) -> tuple[Any, ...]:

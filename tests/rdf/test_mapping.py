@@ -160,6 +160,13 @@ def test_a_broken_file_is_refused_in_one_line(case: str, tmp_path: Path) -> None
     assert named in message
 
 
+def test_a_file_that_is_not_utf_8_is_refused_in_one_line(tmp_path: Path) -> None:
+    file = tmp_path / "latin.yaml"
+    file.write_bytes(document().encode("utf-8") + "# caf\u00e9\n".encode("latin-1"))
+    with pytest.raises(MappingError, match=r"^latin\.yaml: is not UTF-8[^\n]*$"):
+        load_mapping(file)
+
+
 def test_a_missing_file_is_refused(tmp_path: Path) -> None:
     with pytest.raises(MappingError, match=r"^nope\.yaml: "):
         load_mapping(tmp_path / "nope.yaml")

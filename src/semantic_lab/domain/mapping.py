@@ -1,11 +1,10 @@
-import dataclasses
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
 
 from semantic_lab.domain.errors import MappingError, TaxonomyError
 from semantic_lab.domain.ontology import Ontology
-from semantic_lab.domain.records import DATA_TABLES, record_type
+from semantic_lab.domain.records import DATA_TABLES, columns
 from semantic_lab.domain.taxonomy import Taxonomy
 
 
@@ -76,7 +75,7 @@ ALL_TABLES = tuple(name for name, _ in DATA_TABLES)
 def _fields(table: str) -> frozenset[str] | None:
     """The columns of a data table, or None when the name is no data table."""
     try:
-        return frozenset(f.name for f in dataclasses.fields(record_type(table)))
+        return frozenset(columns(table))
     except KeyError:
         return None
 

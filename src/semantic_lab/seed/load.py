@@ -1,13 +1,12 @@
 """The Postgres schema of the seed and the loader that rebuilds it in one transaction."""
 
 from collections.abc import Iterable, Sequence
-from dataclasses import fields
 from importlib.resources import files
 from typing import Any
 
 import psycopg
 
-from semantic_lab.domain.records import DATA_TABLES, Dataset, record_type, rows
+from semantic_lab.domain.records import DATA_TABLES, Dataset, columns, rows
 from semantic_lab.domain.taxonomy import Taxonomy
 
 CONCEPT_TABLES = ("concept", "concept_alt_label", "concept_closure")
@@ -20,11 +19,6 @@ TABLES: tuple[str, ...] = CONCEPT_TABLES + tuple(table for table, _ in DATA_TABL
 
 def _schema() -> str:
     return files("semantic_lab.seed").joinpath("schema.sql").read_text(encoding="utf-8")
-
-
-def _columns(table: str) -> tuple[str, ...]:
-    """The column names of a data table, taken from the fields of its record class."""
-    return tuple(field.name for field in fields(record_type(table)))
 
 
 def _copy(
@@ -82,11 +76,11 @@ def rebuild(
             taxonomy.closure(),
         )
         for table, _ in DATA_TABLES:
-            columns = _columns(table)
+            names = columns(table)
             counts[table] = _copy(
                 cursor,
                 table,
-                columns,
-                (tuple(getattr(record, name) for name in columns) for record in rows(dataset, table)),
+                names,
+                (tuple(getattr(record, name) for name in names) for record in rows(dataset, table)),
             )
     return counts

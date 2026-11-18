@@ -25,6 +25,8 @@ def load_mapping(file: Path) -> Mapping:
         document = yaml.safe_load(file.read_text(encoding="utf-8"))
     except OSError as error:
         raise MappingError(f"{name}: cannot be read: {error.strerror or error}") from error
+    except UnicodeDecodeError as error:
+        raise MappingError(f"{name}: is not UTF-8") from error
     except yaml.YAMLError as error:
         raise MappingError(f"{name}: is not YAML: {' '.join(str(error).split())}") from error
     try:

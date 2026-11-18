@@ -2,15 +2,16 @@ from dataclasses import dataclass
 
 import pytest
 from rdflib import RDF, Graph, Literal, URIRef
-from rdflib.namespace import SH, XSD
+from rdflib.namespace import SH
 
 from semantic_lab.domain.errors import OntologyError
 from semantic_lab.domain.mapping import Mapping
-from semantic_lab.domain.ontology import Ontology
+from semantic_lab.domain.ontology import NAMESPACE, Ontology
 from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.sample import first_orders
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.rdf.ontology import ontology_graph
+from semantic_lab.rdf import shacl
 from semantic_lab.rdf.shacl import validate
 from semantic_lab.rdf.taxonomy import taxonomy_graph
 from tests.conftest import ONTOLOGY_FILE, TAXONOMY_DIRECTORY
@@ -29,6 +30,7 @@ PREFIXES = f"""@prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix sl: <{SL}> .
 """
 LABELS = '"{0}"@en, "{0}"@es'
+DECIMAL = URIRef("http://www.w3.org/2001/XMLSchema#decimal")
 
 
 def concept(name: str, extra: str = "", scheme: str = "t") -> str:
@@ -176,6 +178,12 @@ TAXONOMY_FAULTS = {
     "a node typed as neither a concept nor a scheme": Fault(
         at("d"), "OrConstraintComponent", add='t:d skos:notation "t.d" .'
     ),
+    "an untyped node with skos:broader": Fault(
+        at("d"), "ClassConstraintComponent", add="t:d skos:broader t:a ."
+    ),
+    "an untyped node with skos:prefLabel": Fault(
+        at("d"), "OrConstraintComponent", add='t:d skos:prefLabel "d"@en .'
+    ),
     "a scheme with no notation": Fault(
         f"{TAXONOMY}t",
         "MinCountConstraintComponent",
@@ -241,6 +249,15 @@ ONTOLOGY_FAULTS = {
     "an object property with no comment": Fault(
         SL + "op", "MinCountConstraintComponent", O_COMMENT, onto("op", 'rdfs:comment "op"@en', "")
     ),
+    "a class with two comments": Fault(
+        SL + "C", "MaxCountConstraintComponent", O_COMMENT, add='sl:C rdfs:comment "more"@en .'
+    ),
+    "a class with a comment in Spanish": Fault(
+        SL + "C",
+        "LanguageInConstraintComponent",
+        O_COMMENT,
+        onto("C", 'rdfs:comment "C"@en', 'rdfs:comment "C"@es'),
+    ),
     "a datatype property whose range is xsd:float": Fault(
         SL + "dp", "InConstraintComponent", O_RANGE, onto("dp", "xsd:string", "xsd:float")
     ),
@@ -304,7 +321,7 @@ def fault_graph(
 
 @pytest.fixture(scope="module")
 def data_shapes(shapes: Graph) -> Graph:
-    return data_faults.data_group(shapes)
+    return shacl.data_shapes(shapes, NAMESPACE)
 
 
 def test_the_first_200_orders_conform(
@@ -323,11 +340,6 @@ def test_the_sample_the_data_faults_start_from_conforms(
     fault_graph: Graph, shapes: Graph, ontology_rdf: Graph
 ) -> None:
     assert validate(fault_graph, shapes, ontology_rdf) == ()
-
-
-def test_the_data_group_holds_the_shape_of_each_class(data_shapes: Graph) -> None:
-    targets = set(data_shapes.objects(None, SH.targetClass))
-    assert len(targets) == 14
 
 
 def test_every_class_with_a_table_has_a_closed_shape(shapes: Graph, mapping: Mapping) -> None:
@@ -360,6 +372,6 @@ def test_an_ill_typed_share_is_an_ontology_error_and_no_raw_exception(
     graph = data_faults.copy(fault_graph)
     batch = data_faults.batch_of(graph, "Blend")
     component = data_faults.components_of(graph, batch)[0]
-    data_faults.put(graph, component, "share", Literal("abc", datatype=XSD.decimal))
+    data_faults.put(graph, component, "share", Literal("abc", datatype=DECIMAL))
     with pytest.raises(OntologyError, match=r"^validation: [^\n]+$"):
         validate(graph, shapes, ontology_rdf)

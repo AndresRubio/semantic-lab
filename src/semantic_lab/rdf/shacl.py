@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pyshacl
 from pyshacl.errors import ReportableRuntimeError
-from rdflib import Graph, URIRef
+from rdflib import BNode, Graph, URIRef
 from rdflib.namespace import SH
-from rdflib.plugins.sparql.sparql import SPARQLError
+from rdflib.term import Node
 
 from semantic_lab.domain.errors import OntologyError
 from semantic_lab.rdf import turtle
@@ -29,12 +29,34 @@ def shapes_graph(file: Path) -> Graph:
     return turtle.read([file], OntologyError)
 
 
+def data_shapes(shapes: Graph, namespace: str) -> Graph:
+    """The node shapes whose `sh:targetClass` is in `namespace`, with every node they reach.
+
+    The prefix declarations come along, since a SPARQL rule reaches them through `sh:prefixes`.
+    """
+    todo: list[Node] = [
+        shape for shape, target in shapes.subject_objects(SH.targetClass)
+        if str(target).startswith(namespace)
+    ]
+    keep: set[Node] = set()
+    while todo:
+        node = todo.pop()
+        if node not in keep:
+            keep.add(node)
+            todo.extend(o for o in shapes.objects(node, None) if isinstance(o, URIRef | BNode))
+    group = Graph()
+    for node in keep:
+        for predicate, value in shapes.predicate_objects(node):
+            group.add((node, predicate, value))
+    return group
+
+
 def validate(data: Graph, shapes: Graph, ontology: Graph | None = None) -> tuple[Violation, ...]:
     """Check `data` against `shapes`, sorted by focus, constraint, path and message.
 
     With `ontology`, a shape that targets a class also targets its subclasses. No other
-    inference runs. A malformed shape raises `OntologyError` starting `shapes:`, and an error
-    that rdflib or pyshacl raises while checking the data starts `validation:`.
+    inference runs. A malformed shape raises `OntologyError` starting `shapes:`, and any other
+    error that rdflib or pyshacl raises starts `validation:`.
     """
     try:
         _, report, _ = pyshacl.validate(
@@ -43,8 +65,8 @@ def validate(data: Graph, shapes: Graph, ontology: Graph | None = None) -> tuple
     except ReportableRuntimeError as cause:
         reason = " ".join(str(cause).split()) or type(cause).__name__
         raise OntologyError(f"shapes: {reason}") from cause
-    except (TypeError, ValueError, SPARQLError) as cause:
-        # An ill-typed literal, such as "abc"^^xsd:decimal, fails inside a SPARQL aggregate.
+    except Exception as cause:
+        # The engine runs SPARQL from a file a person edits, and a fault there can raise any type.
         reason = " ".join(str(cause).split())
         raise OntologyError(f"validation: {type(cause).__name__}: {reason}") from cause
     return tuple(sorted(_violations(report), key=_order))

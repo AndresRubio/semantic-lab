@@ -14,6 +14,7 @@ from semantic_lab.domain.errors import (
     TaxonomyError,
 )
 from semantic_lab.domain.mapping import problems
+from semantic_lab.domain.ontology import NAMESPACE
 from semantic_lab.domain.sample import first_orders
 from semantic_lab.rdf import export, shacl
 from semantic_lab.rdf.mapping import load_mapping
@@ -31,6 +32,14 @@ class Check:
     problems: tuple[str, ...]
 
 
+def count(text: str) -> int:
+    """An argparse type: a whole number, 0 or more."""
+    value = int(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, got {value}")
+    return value
+
+
 def main(argv: Sequence[str], out: TextIO, err: TextIO) -> int:
     parser = argparse.ArgumentParser(
         prog="ontology",
@@ -40,7 +49,7 @@ def main(argv: Sequence[str], out: TextIO, err: TextIO) -> int:
         "--ontology-dir", type=Path, default=Path("ontology"), help="the folder of the files"
     )
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED, help="the generator seed")
-    parser.add_argument("--orders", type=int, default=200, help="how many orders to export")
+    parser.add_argument("--orders", type=count, default=200, help="how many orders to export")
     parser.add_argument("--full", action="store_true", help="export every order")
     args = parser.parse_args(argv)
     try:
@@ -67,24 +76,30 @@ def run_checks(directory: Path, seed: int, orders: int | None) -> tuple[Check, .
     shapes = shacl.shapes_graph(directory / "shapes.ttl")
     mapping = load_mapping(directory / "mapping.yaml")
 
-    taxonomy_found = shacl.validate(taxonomy_data, shapes, ontology_data)
+    taxonomy_found = shacl.validate(taxonomy_data, shapes)
     ontology_found = shacl.validate(ontology_data, shapes)
     mapping_found = problems(mapping, ontology, taxonomy)
 
-    dataset = generate(taxonomy, seed)
-    sample = dataset if orders is None else first_orders(dataset, orders)
-    covered = (
-        f"{len(sample.orders)} orders" if orders is None else f"the first {orders} orders"
-    )
-    data_found: tuple[str, ...]
-    try:
-        data = export.export(sample, taxonomy, ontology, mapping)
-        for triple in taxonomy_data:
-            data.add(triple)
-        data_found = tuple(v.line() for v in shacl.validate(data, shapes, ontology_data))
-        data_size = len(data)
-    except MappingError as error:
-        data_found, data_size = (f"export: {error}",), 0
+    data_check: Check
+    if mapping_found:
+        # The export trusts the mapping, so a faulty one would crash it.
+        data_check = Check("data shapes", "not run", ("the mapping check failed",))
+    else:
+        dataset = generate(taxonomy, seed)
+        sample = dataset if orders is None else first_orders(dataset, orders)
+        prefix = "" if orders is None else "the first "
+        covered = f"{prefix}{len(sample.orders)} orders"
+        data_found: tuple[str, ...]
+        try:
+            data = export.export(sample, taxonomy, ontology, mapping)
+            for triple in taxonomy_data:
+                data.add(triple)
+            data_shapes = shacl.data_shapes(shapes, NAMESPACE)
+            data_found = tuple(v.line() for v in shacl.validate(data, data_shapes, ontology_data))
+            data_size = len(data)
+        except MappingError as error:
+            data_found, data_size = (f"export: {error}",), 0
+        data_check = Check("data shapes", f"{data_size} triples from {covered}", data_found)
     return (
         Check(
             "taxonomy shapes",
@@ -102,7 +117,7 @@ def run_checks(directory: Path, seed: int, orders: int | None) -> tuple[Check, .
             f"{len(mapping.postgres_columns())} columns",
             mapping_found,
         ),
-        Check("data shapes", f"{data_size} triples from {covered}", data_found),
+        data_check,
     )
 
 

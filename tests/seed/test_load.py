@@ -2,7 +2,7 @@ import re
 from dataclasses import fields
 from importlib.resources import files
 
-from semantic_lab.domain.records import Dataset
+from semantic_lab.domain.records import Dataset, columns
 from semantic_lab.seed import load
 
 
@@ -32,4 +32,4 @@ def test_every_record_column_is_declared_in_the_schema() -> None:
     for table, _ in load.DATA_TABLES:
         body = schema.split(f"create table {table} (", 1)[1].split("\n);", 1)[0]
         declared = {line.split()[0] for line in body.splitlines() if line.strip()}
-        assert set(load._columns(table)) <= declared, table
+        assert set(columns(table)) <= declared, table

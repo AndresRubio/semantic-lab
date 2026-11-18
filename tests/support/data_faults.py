@@ -14,8 +14,8 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
-from rdflib.namespace import SH, SKOS, XSD
+from rdflib import RDF, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import SKOS, XSD
 
 from semantic_lab.domain.mapping import Mapping
 from semantic_lab.domain.ontology import NAMESPACE, Ontology
@@ -27,7 +27,6 @@ from semantic_lab.rdf.shacl import validate
 from semantic_lab.rdf.taxonomy import taxonomy_graph
 from tests.conftest import TAXONOMY_DIRECTORY
 
-SHAPES = "https://semantic-lab.example/shapes"
 TAXONOMY = "https://semantic-lab.example/taxonomy/"
 SLN = Namespace(NAMESPACE)
 NODES = Namespace(DATA)
@@ -83,25 +82,6 @@ def fault_sample(dataset: Dataset) -> Dataset:
     )
 
 
-def data_group(shapes: Graph) -> Graph:
-    """The shapes of the domain's data: every shape that targets an ontology class, what they
-    reach and the header with its prefixes."""
-    roots = [s for s, c in shapes.subject_objects(SH.targetClass) if str(c).startswith(NAMESPACE)]
-    keep: set[Any] = set()
-    todo: list[Any] = [URIRef(SHAPES), *roots]
-    while todo:
-        node = todo.pop()
-        if node in keep:
-            continue
-        keep.add(node)
-        todo.extend(o for o in shapes.objects(node, None) if isinstance(o, URIRef | BNode))
-    group = Graph()
-    for node in keep:
-        for predicate, value in shapes.predicate_objects(node):
-            group.add((node, predicate, value))
-    return group
-
-
 def copy(graph: Graph) -> Graph:
     duplicate = Graph()
     duplicate += graph
@@ -127,10 +107,6 @@ def get(g: Graph, node: URIRef, name: str) -> URIRef:
     value = g.value(node, SLN[name])
     assert isinstance(value, URIRef), f"{node} has no {name} node"
     return value
-
-
-def many(g: Graph, node: URIRef, name: str) -> list[URIRef]:
-    return sorted(o for o in g.objects(node, SLN[name]) if isinstance(o, URIRef))
 
 
 def py(g: Graph, node: URIRef, name: str) -> Any:
