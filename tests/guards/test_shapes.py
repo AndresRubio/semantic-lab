@@ -2,8 +2,9 @@ from dataclasses import dataclass
 
 import pytest
 from rdflib import RDF, Graph, Literal, URIRef
-from rdflib.namespace import SH
+from rdflib.namespace import SH, XSD
 
+from semantic_lab.domain.errors import OntologyError
 from semantic_lab.domain.mapping import Mapping
 from semantic_lab.domain.ontology import Ontology
 from semantic_lab.domain.records import Dataset
@@ -351,3 +352,14 @@ def test_every_property_of_every_class_is_checked(
     name: str, fault_graph: Graph, data_shapes: Graph, ontology_rdf: Graph
 ) -> None:
     data_faults.check_contained(KINDS[name], fault_graph, data_shapes, ontology_rdf)
+
+
+def test_an_ill_typed_share_is_an_ontology_error_and_no_raw_exception(
+    fault_graph: Graph, shapes: Graph, ontology_rdf: Graph
+) -> None:
+    graph = data_faults.copy(fault_graph)
+    batch = data_faults.batch_of(graph, "Blend")
+    component = data_faults.components_of(graph, batch)[0]
+    data_faults.put(graph, component, "share", Literal("abc", datatype=XSD.decimal))
+    with pytest.raises(OntologyError, match=r"^validation: [^\n]+$"):
+        validate(graph, shapes, ontology_rdf)

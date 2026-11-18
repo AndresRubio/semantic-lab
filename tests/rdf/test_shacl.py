@@ -42,6 +42,27 @@ def test_a_violation_without_a_path_has_a_shorter_line() -> None:
     assert violation.line() == "f ClassConstraintComponent: m"
 
 
+def test_an_ill_typed_number_in_a_sum_rule_raises_an_error_that_starts_with_validation() -> None:
+    shapes = graph(
+        SHAPES
+        + """
+ex:ThingShape sh:sparql [
+    sh:message "The parts sum to 1." ;
+    sh:select \"\"\"
+        SELECT $this (SUM(?part) AS ?value)
+        WHERE { $this <https://semantic-lab.example/ex#part> ?part . }
+        GROUP BY $this
+        HAVING (SUM(?part) != 1)
+    \"\"\" ] .
+"""
+    )
+    data = graph(
+        'ex:a a ex:Thing ; ex:name "a" ; ex:part "abc"^^<http://www.w3.org/2001/XMLSchema#decimal> .'
+    )
+    with pytest.raises(OntologyError, match=r"^validation: (TypeError|SPARQLTypeError)[^\n]+$"):
+        validate(data, shapes)
+
+
 @pytest.mark.parametrize("order", [("a", "b"), ("b", "a")])
 def test_violations_come_back_sorted_whatever_order_the_triples_were_added_in(
     order: tuple[str, str],

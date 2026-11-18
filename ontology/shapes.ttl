@@ -335,8 +335,8 @@ shape:RoastBatch a sh:NodeShape ;
         sh:path [ sh:inversePath sl:componentOf ] ;
         sh:minCount 1
     ] ;
-    # isNumeric: a value that is no number is for the datatype constraint to report, and it would
-    # abort the SUM.
+    # isNumeric keeps a value that is no number out of the sums. A literal that has a numeric
+    # datatype and an ill-formed value passes it and fails in the SUM: validate() reports that.
     sh:sparql [
         sh:message "The shares of a roast batch's components must sum to 1." ;
         sh:prefixes <https://semantic-lab.example/shapes> ;

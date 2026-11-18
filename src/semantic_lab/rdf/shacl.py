@@ -5,6 +5,7 @@ import pyshacl
 from pyshacl.errors import ReportableRuntimeError
 from rdflib import Graph, URIRef
 from rdflib.namespace import SH
+from rdflib.plugins.sparql.sparql import SPARQLError
 
 from semantic_lab.domain.errors import OntologyError
 from semantic_lab.rdf import turtle
@@ -32,7 +33,8 @@ def validate(data: Graph, shapes: Graph, ontology: Graph | None = None) -> tuple
     """Check `data` against `shapes`, sorted by focus, constraint, path and message.
 
     With `ontology`, a shape that targets a class also targets its subclasses. No other
-    inference runs.
+    inference runs. A malformed shape raises `OntologyError` starting `shapes:`, and an error
+    that rdflib or pyshacl raises while checking the data starts `validation:`.
     """
     try:
         _, report, _ = pyshacl.validate(
@@ -41,6 +43,10 @@ def validate(data: Graph, shapes: Graph, ontology: Graph | None = None) -> tuple
     except ReportableRuntimeError as cause:
         reason = " ".join(str(cause).split()) or type(cause).__name__
         raise OntologyError(f"shapes: {reason}") from cause
+    except (TypeError, ValueError, SPARQLError) as cause:
+        # An ill-typed literal, such as "abc"^^xsd:decimal, fails inside a SPARQL aggregate.
+        reason = " ".join(str(cause).split())
+        raise OntologyError(f"validation: {type(cause).__name__}: {reason}") from cause
     return tuple(sorted(_violations(report), key=_order))
 
 
