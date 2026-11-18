@@ -7,6 +7,7 @@ from pathlib import Path
 import httpx
 import psycopg
 import pytest
+from rdflib import Graph
 
 from semantic_lab import config, probes
 from semantic_lab.config import Settings
@@ -14,6 +15,7 @@ from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.ontology import Ontology
 from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.rdf.ontology import ontology_graph, ontology_of
+from semantic_lab.rdf.shacl import shapes_graph
 from semantic_lab.rdf.taxonomy import load_taxonomy
 from semantic_lab.seed import generate, load
 from tests.support import envfile
@@ -22,6 +24,7 @@ from tests.support.compose_env import without_lab_settings
 ROOT = Path(__file__).resolve().parent.parent
 TAXONOMY_DIRECTORY = ROOT / "ontology" / "taxonomy"
 ONTOLOGY_FILE = ROOT / "ontology" / "ontology.ttl"
+SHAPES_FILE = ROOT / "ontology" / "shapes.ttl"
 STACK_ENV = ROOT / "tests" / "stack.env"
 PROJECT = "semantic-lab-test"
 READY_TIMEOUT_SECONDS = 180
@@ -105,3 +108,8 @@ def dataset(taxonomy: Taxonomy) -> Dataset:
 @pytest.fixture(scope="session")
 def ontology() -> Ontology:
     return ontology_of(ontology_graph(ONTOLOGY_FILE))
+
+
+@pytest.fixture(scope="session")
+def shapes() -> Graph:
+    return shapes_graph(SHAPES_FILE)

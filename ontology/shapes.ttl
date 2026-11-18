@@ -1,0 +1,131 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sl: <https://semantic-lab.example/ontology#> .
+@prefix shape: <https://semantic-lab.example/shapes#> .
+
+# The header carries the prefixes that the SPARQL constraints name with sh:prefixes.
+<https://semantic-lab.example/shapes> a owl:Ontology ;
+    sh:declare
+        [ sh:prefix "sl" ; sh:namespace "https://semantic-lab.example/ontology#"^^xsd:anyURI ] ,
+        [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
+        [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] .
+
+# Taxonomy shapes
+
+# One English and one Spanish label, and no other language.
+shape:PrefLabels a sh:PropertyShape ;
+    sh:path skos:prefLabel ;
+    sh:minCount 2 ;
+    sh:maxCount 2 ;
+    sh:uniqueLang true ;
+    sh:languageIn ( "en" "es" ) .
+
+shape:AltLabels a sh:PropertyShape ;
+    sh:path skos:altLabel ;
+    sh:languageIn ( "en" "es" ) .
+
+shape:Notation a sh:PropertyShape ;
+    sh:path skos:notation ;
+    sh:minCount 1 ;
+    sh:maxCount 1 .
+
+shape:Concept a sh:NodeShape ;
+    sh:targetClass skos:Concept ;
+    sh:property shape:Notation, shape:PrefLabels, shape:AltLabels ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class skos:ConceptScheme
+    ] ;
+    sh:property [
+        sh:path skos:broader ;
+        sh:maxCount 1 ;
+        sh:class skos:Concept
+    ] ;
+    sh:sparql [
+        sh:message "The IRI of a concept is the taxonomy namespace, the scheme of its notation, a hash and its slug." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this ?value
+            WHERE {
+                $this skos:notation ?value .
+                FILTER (STR($this) != CONCAT("https://semantic-lab.example/taxonomy/",
+                    STRBEFORE(STR(?value), "."), "#", STRAFTER(STR(?value), ".")))
+            }
+        """
+    ] .
+
+shape:ConceptScheme a sh:NodeShape ;
+    sh:targetClass skos:ConceptScheme ;
+    sh:property shape:Notation, shape:PrefLabels .
+
+# The loader finds concepts by their type, so an untyped one would vanish without a word.
+shape:TypedSkos a sh:NodeShape ;
+    sh:targetSubjectsOf skos:broader, skos:inScheme ;
+    sh:class skos:Concept ;
+    sh:message "A node with skos:broader or skos:inScheme must be typed skos:Concept." .
+
+shape:TypedSkosLabelled a sh:NodeShape ;
+    sh:targetSubjectsOf skos:notation, skos:prefLabel ;
+    sh:or ( [ sh:class skos:Concept ] [ sh:class skos:ConceptScheme ] ) ;
+    sh:message "A node with a notation or a prefLabel must be typed skos:Concept or skos:ConceptScheme." .
+
+# Ontology shapes
+
+shape:RdfsLabels a sh:PropertyShape ;
+    sh:path rdfs:label ;
+    sh:minCount 2 ;
+    sh:maxCount 2 ;
+    sh:uniqueLang true ;
+    sh:languageIn ( "en" "es" ) .
+
+shape:RdfsComment a sh:PropertyShape ;
+    sh:path rdfs:comment ;
+    sh:minCount 1 .
+
+shape:Class a sh:NodeShape ;
+    sh:targetClass owl:Class ;
+    sh:pattern "^https://semantic-lab\\.example/ontology#" ;
+    sh:message "A class is an IRI in the ontology namespace." ;
+    sh:property shape:RdfsLabels, shape:RdfsComment ;
+    sh:property [
+        sh:path rdfs:subClassOf ;
+        sh:maxCount 1 ;
+        sh:class owl:Class
+    ] .
+
+shape:ObjectProperty a sh:NodeShape ;
+    sh:targetClass owl:ObjectProperty ;
+    sh:property shape:RdfsLabels, shape:RdfsComment ;
+    sh:property [
+        sh:path rdfs:domain ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:class owl:Class
+    ] ;
+    sh:property [
+        sh:path rdfs:range ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:or ( [ sh:class owl:Class ] [ sh:in ( skos:Concept ) ] ) ;
+        sh:message "The range of an object property is a class or skos:Concept."
+    ] .
+
+shape:DatatypeProperty a sh:NodeShape ;
+    sh:targetClass owl:DatatypeProperty ;
+    sh:property shape:RdfsLabels, shape:RdfsComment ;
+    sh:property [
+        sh:path rdfs:domain ;
+        sh:maxCount 1
+    ] ;
+    sh:property [
+        sh:path rdfs:range ;
+        sh:minCount 1 ;
+        sh:maxCount 1 ;
+        sh:in ( xsd:string xsd:integer xsd:decimal xsd:date )
+    ] .
