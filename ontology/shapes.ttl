@@ -129,3 +129,419 @@ shape:DatatypeProperty a sh:NodeShape ;
         sh:maxCount 1 ;
         sh:in ( xsd:string xsd:integer xsd:decimal xsd:date )
     ] .
+
+# Data shapes, one per class. Each is closed except Blend and SingleLotProduct, which add
+# rules to the Product shape.
+
+shape:Name a sh:PropertyShape ;
+    sh:path sl:name ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string .
+
+shape:Cooperative a sh:NodeShape ;
+    sh:targetClass sl:Cooperative ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property shape:Name ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^C-[0-9]{2}$"
+    ] ;
+    sh:property [
+        sh:path sl:inRegion ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:node shape:Region
+    ] .
+
+shape:Certification a sh:NodeShape ;
+    sh:targetClass sl:Certification ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:heldBy ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Cooperative
+    ] ;
+    sh:property [
+        sh:path sl:standard ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:in ( "organic" "fair_trade" )
+    ] ;
+    sh:property [
+        sh:path sl:validFrom ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date ; sh:lessThan sl:validUntil
+    ] ;
+    sh:property [
+        sh:path sl:validUntil ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] .
+
+shape:Farm a sh:NodeShape ;
+    sh:targetClass sl:Farm ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property shape:Name ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^F-[0-9]{3}$"
+    ] ;
+    sh:property [
+        sh:path sl:memberOf ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Cooperative
+    ] ;
+    sh:property [
+        sh:path sl:altitudeMetres ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:integer ; sh:minExclusive 0
+    ] .
+
+shape:Shipment a sh:NodeShape ;
+    sh:targetClass sl:Shipment ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^S-[0-9]{2}$"
+    ] ;
+    sh:property [
+        sh:path sl:originPort ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path sl:destinationPort ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path sl:departedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date ; sh:lessThan sl:arrivedOn
+    ] ;
+    sh:property [
+        sh:path sl:arrivedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] .
+
+shape:Lot a sh:NodeShape ;
+    sh:targetClass sl:Lot ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^L-[0-9]{4}$"
+    ] ;
+    sh:property [
+        sh:path sl:producedBy ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Cooperative
+    ] ;
+    sh:property [
+        sh:path sl:harvestedFrom ; sh:minCount 1 ;
+        sh:class sl:Farm
+    ] ;
+    # The farms of a lot belong to the cooperative that produced it.
+    sh:property [
+        sh:path ( sl:harvestedFrom sl:memberOf ) ;
+        sh:equals sl:producedBy
+    ] ;
+    sh:property [
+        sh:path sl:shippedIn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Shipment
+    ] ;
+    sh:property [
+        sh:path sl:process ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:node shape:ProcessConcept
+    ] ;
+    sh:property [
+        sh:path sl:variety ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path sl:harvestedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path sl:weightKg ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path sl:pricePerKg ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] .
+
+# A product is a blend or a single lot product, never both and never neither.
+shape:Product a sh:NodeShape ;
+    sh:targetClass sl:Product ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:xone ( [ sh:class sl:Blend ] [ sh:class sl:SingleLotProduct ] ) ;
+    sh:property shape:Name ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^P-[0-9]{2}$"
+    ] ;
+    sh:property [
+        sh:path sl:category ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:node shape:CategoryConcept
+    ] ;
+    sh:property [
+        sh:path sl:originRegion ; sh:maxCount 1 ;
+        sh:node shape:Region
+    ] ;
+    sh:property [
+        sh:path sl:flavourNote ; sh:minCount 1 ;
+        sh:node shape:FlavourConcept
+    ] ;
+    sh:property [
+        sh:path sl:bagWeightGrams ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:integer ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path sl:listPrice ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] .
+
+shape:Blend a sh:NodeShape ;
+    sh:targetClass sl:Blend ;
+    sh:property [ sh:path sl:originRegion ; sh:maxCount 0 ] ;
+    sh:property [
+        sh:path ( sl:category [ sh:zeroOrMorePath skos:broader ] ) ;
+        sh:hasValue <https://semantic-lab.example/taxonomy/category#blend>
+    ] .
+
+shape:SingleLotProduct a sh:NodeShape ;
+    sh:targetClass sl:SingleLotProduct ;
+    sh:property [ sh:path sl:originRegion ; sh:minCount 1 ; sh:maxCount 1 ] .
+
+shape:RoastBatch a sh:NodeShape ;
+    sh:targetClass sl:RoastBatch ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^B-[0-9]{4}$"
+    ] ;
+    sh:property [
+        sh:path sl:batchOf ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Product
+    ] ;
+    sh:property [
+        sh:path sl:roastedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path sl:outputKg ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path sl:costPerKg ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath sl:componentOf ] ;
+        sh:minCount 1
+    ] ;
+    # isNumeric: a value that is no number is for the datatype constraint to report, and it would
+    # abort the SUM.
+    sh:sparql [
+        sh:message "The shares of a roast batch's components must sum to 1." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this (SUM(?share) AS ?value)
+            WHERE { ?component sl:componentOf $this ; sl:share ?share . FILTER (isNumeric(?share)) }
+            GROUP BY $this
+            HAVING (SUM(?share) != 1)
+        """
+    ] ;
+    sh:sparql [
+        sh:message "The order lines of a roast batch must not sum to more kilograms than it produced." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this (SUM(?kg) AS ?value)
+            WHERE { $this sl:outputKg ?output . ?line sl:fromBatch $this ; sl:kg ?kg . FILTER (isNumeric(?kg)) }
+            GROUP BY $this ?output
+            HAVING (SUM(?kg) > ?output)
+        """
+    ] ;
+    sh:sparql [
+        sh:message "A batch of a single lot product has one component and a batch of a blend has at least two." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this (COUNT(?component) AS ?value)
+            WHERE { $this sl:batchOf ?product . ?product a ?kind . ?component sl:componentOf $this . }
+            GROUP BY $this ?kind
+            HAVING ((?kind = sl:SingleLotProduct && COUNT(?component) != 1)
+                || (?kind = sl:Blend && COUNT(?component) < 2))
+        """
+    ] ;
+    sh:sparql [
+        sh:message "Every lot of a batch whose product has an origin region comes from a cooperative in that region." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this ?value
+            WHERE {
+                $this sl:batchOf ?product .
+                ?product sl:originRegion ?region .
+                ?component sl:componentOf $this ; sl:fromLot ?value .
+                FILTER NOT EXISTS { ?value sl:producedBy ?cooperative . ?cooperative sl:inRegion ?region . }
+            }
+        """
+    ] .
+
+shape:BatchComponent a sh:NodeShape ;
+    sh:targetClass sl:BatchComponent ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:componentOf ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:RoastBatch
+    ] ;
+    sh:property [
+        sh:path sl:fromLot ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Lot
+    ] ;
+    sh:property [
+        sh:path sl:share ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0 ; sh:maxInclusive 1
+    ] .
+
+shape:Customer a sh:NodeShape ;
+    sh:targetClass sl:Customer ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property shape:Name ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^K-[0-9]{3}$"
+    ] ;
+    sh:property [
+        sh:path sl:segment ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:in ( "cafe" "shop" "restaurant" )
+    ] ;
+    sh:property [
+        sh:path sl:city ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] ;
+    sh:property [
+        sh:path sl:country ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] .
+
+shape:Order a sh:NodeShape ;
+    sh:targetClass sl:Order ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^O-[0-9]{5}$"
+    ] ;
+    sh:property [
+        sh:path sl:placedBy ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Customer
+    ] ;
+    sh:property [
+        sh:path sl:orderedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path [ sh:inversePath sl:lineOf ] ;
+        sh:minCount 1
+    ] .
+
+shape:OrderLine a sh:NodeShape ;
+    sh:targetClass sl:OrderLine ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:lineOf ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Order
+    ] ;
+    sh:property [
+        sh:path sl:lineNo ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:integer ; sh:minInclusive 1
+    ] ;
+    sh:property [
+        sh:path sl:sells ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Product
+    ] ;
+    sh:property [
+        sh:path sl:fromBatch ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:RoastBatch
+    ] ;
+    # The batch an order line was filled from makes the product the line sells.
+    sh:property [
+        sh:path ( sl:fromBatch sl:batchOf ) ;
+        sh:equals sl:sells
+    ] ;
+    sh:property [
+        sh:path sl:bags ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:integer ; sh:minInclusive 1
+    ] ;
+    sh:property [
+        sh:path sl:unitPrice ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path sl:amount ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    sh:property [
+        sh:path sl:kg ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] .
+
+shape:QualityIncident a sh:NodeShape ;
+    sh:targetClass sl:QualityIncident ;
+    sh:closed true ;
+    sh:ignoredProperties ( rdf:type ) ;
+    sh:property [
+        sh:path sl:code ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:pattern "^Q-[0-9]{2}$"
+    ] ;
+    sh:property [
+        sh:path sl:affects ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class sl:Lot
+    ] ;
+    sh:property [
+        sh:path sl:kind ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string ; sh:in ( "recall" )
+    ] ;
+    sh:property [
+        sh:path sl:reportedOn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:date
+    ] ;
+    sh:property [
+        sh:path sl:description ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:datatype xsd:string
+    ] .
+
+# Helper shapes have no target. A concept of one scheme, reached through sh:node.
+
+# A region is two steps below a continent: a continent, a country, then a region.
+shape:Region a sh:NodeShape ;
+    sh:class skos:Concept ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:hasValue <https://semantic-lab.example/taxonomy/geo>
+    ] ;
+    sh:property [ sh:path ( skos:broader skos:broader ) ; sh:minCount 1 ] ;
+    sh:property [ sh:path ( skos:broader skos:broader skos:broader ) ; sh:maxCount 0 ] .
+
+shape:ProcessConcept a sh:NodeShape ;
+    sh:class skos:Concept ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:hasValue <https://semantic-lab.example/taxonomy/process>
+    ] .
+
+# The root category is no category of a product.
+shape:CategoryConcept a sh:NodeShape ;
+    sh:class skos:Concept ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:hasValue <https://semantic-lab.example/taxonomy/category>
+    ] ;
+    sh:property [ sh:path skos:broader ; sh:minCount 1 ] .
+
+# A flavour note is a leaf of the flavour tree.
+shape:FlavourConcept a sh:NodeShape ;
+    sh:class skos:Concept ;
+    sh:property [
+        sh:path skos:inScheme ;
+        sh:hasValue <https://semantic-lab.example/taxonomy/flavour>
+    ] ;
+    sh:property [ sh:path [ sh:inversePath skos:broader ] ; sh:maxCount 0 ] .
