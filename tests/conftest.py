@@ -11,9 +11,11 @@ from rdflib import Graph
 
 from semantic_lab import config, probes
 from semantic_lab.config import Settings
+from semantic_lab.domain.mapping import Mapping
 from semantic_lab.domain.records import Dataset
 from semantic_lab.domain.ontology import Ontology
 from semantic_lab.domain.taxonomy import Taxonomy
+from semantic_lab.rdf.mapping import load_mapping
 from semantic_lab.rdf.ontology import ontology_graph, ontology_of
 from semantic_lab.rdf.shacl import shapes_graph
 from semantic_lab.rdf.taxonomy import load_taxonomy
@@ -25,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TAXONOMY_DIRECTORY = ROOT / "ontology" / "taxonomy"
 ONTOLOGY_FILE = ROOT / "ontology" / "ontology.ttl"
 SHAPES_FILE = ROOT / "ontology" / "shapes.ttl"
+MAPPING_FILE = ROOT / "ontology" / "mapping.yaml"
 STACK_ENV = ROOT / "tests" / "stack.env"
 PROJECT = "semantic-lab-test"
 READY_TIMEOUT_SECONDS = 180
@@ -113,3 +116,8 @@ def ontology() -> Ontology:
 @pytest.fixture(scope="session")
 def shapes() -> Graph:
     return shapes_graph(SHAPES_FILE)
+
+
+@pytest.fixture(scope="session")
+def mapping() -> Mapping:
+    return load_mapping(MAPPING_FILE)
