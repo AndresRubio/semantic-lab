@@ -29,11 +29,13 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
 - `uv run --env-file .env python -m semantic_lab.commands.questions --write-expected` [writes]:
   writes `questions/expected/<id>.json` from the database instead of checking it.
 - `uv run python -m semantic_lab.commands.ontology` [read-only]: runs four checks and prints one
-  line each, `ok` or `FAIL`: the taxonomy and the ontology against `shapes.ttl`, the mapping
-  against the ontology and the Postgres tables, and the first 200 orders exported as RDF against
-  the shapes. It reads no setting and opens no connection. `--orders` changes the sample, `--full`
-  exports every order and takes about two minutes, `--seed` changes the generator's seed and
-  `--ontology-dir` the folder of the files. It exits 1 unless all four are `ok`.
+  line each, always in this order, `ok` or `FAIL`: the taxonomy and the ontology against their
+  shapes in `shapes.ttl`, the mapping against the ontology and the row types, and the first 200
+  orders exported as RDF against the data shapes. When the mapping check fails, the export does
+  not run and the data line says `not run`. It reads no setting and opens no connection.
+  `--orders` changes the sample (0 or more), `--full` exports every order and takes about two
+  minutes, `--seed` changes the generator's seed and `--ontology-dir` the folder of the files. It
+  exits 1 unless all four are `ok`, and 2 on a bad argument.
 - `scripts/check.sh` [read-only]: ruff, mypy and the offline suite. It records a pass against
   the hash of the working tree, so a second run on an unchanged tree ends at once, and
   `--force` runs the checks again. The record lives in the git directory.

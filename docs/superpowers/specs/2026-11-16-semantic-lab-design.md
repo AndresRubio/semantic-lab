@@ -187,7 +187,7 @@ src/semantic_lab/
   domain/      the row types, the taxonomy, the ontology and the mapping as values, errors:
                standard library only
   seed/        the seeded generator and the Postgres schema
-  rdf/         load Turtle, validate SHACL, read the mapping
+  rdf/         load Turtle, validate SHACL, read the mapping, export the rows as RDF
   graph/       project Postgres rows and taxonomy concepts into Neo4j; run read-only Cypher
   semantic/    the Cube client: read the model's metadata, run a query
   agent/       the model interface, the loop, the tools, the profiles
@@ -218,9 +218,8 @@ Three checks hold the layers together:
    ontology term whose entry lists that member.
 3. The first 200 orders of the generator's rows, taken in memory with the rows they name and
    exported as RDF through the mapping, pass the SHACL shapes. This runs offline, with no
-   Postgres, and `--full` validates every row. The plan estimated 16 s for a full validation
-   from a probe with five shapes. With the real shapes it took about two minutes, so the
-   offline suite validates the sample and `--full` runs only when asked.
+   Postgres. The offline suite validates the first 200 orders, and `--full` validates every row
+   in about two minutes.
 
 ## The agent
 
@@ -323,8 +322,9 @@ Ports avoid boe-agent's: Postgres on 5440, Neo4j on 7474 and 7687, Cube on 4000.
    questions with reference SQL. The four taxonomy files and `rdflib` arrive here too,
    earlier than first planned, because the seed needs the concept keys.
 3. Ontology: the ontology, the SHACL shapes, the mapping file with its Postgres targets, the
-   `ontology` command that runs the four checks, and the checks themselves. The taxonomy files
-   already exist from unit 2.
+   `ontology` command that runs the three checks and prints four lines (the first check has
+   one line for the taxonomies and one for the ontology), and the checks themselves. The
+   taxonomy files already exist from unit 2.
 4. Knowledge graph: the projection into Neo4j, its constraints, the Neo4j targets in
    `mapping.yaml` with their check, and reference Cypher for the path questions.
 5. Semantic layer: the Cube model and views, the Cube targets in `mapping.yaml`, the `meta.iri`
