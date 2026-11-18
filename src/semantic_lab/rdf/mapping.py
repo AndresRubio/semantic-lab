@@ -34,8 +34,9 @@ def load_mapping(file: Path) -> Mapping:
 
 
 def _mapping(document: Any) -> Mapping:
-    if not isinstance(document, dict) or set(document) != {"classes", "properties"}:
+    if not isinstance(document, dict):
         raise MappingError("the top level must be a mapping with the keys classes and properties")
+    _keys(document, "the top level", ["classes", "properties"])
     classes = [_class(*item) for item in _entries(document["classes"], "classes")]
     properties = [_property(*item) for item in _entries(document["properties"], "properties")]
     return build_mapping(classes, properties)

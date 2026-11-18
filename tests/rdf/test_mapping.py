@@ -38,8 +38,12 @@ def property_entry(postgres: str) -> str:
 REFUSALS = {
     "not YAML": ("classes: [unclosed\nproperties: {", "is not YAML"),
     "top level is a list": ("- classes\n- properties\n", "top level"),
-    "no properties key": ("classes: {}\n", "top level"),
-    "a third top-level key": ("classes: {}\nproperties: {}\nextra: {}\n", "top level"),
+    "no properties key": ("classes: {}\n", "the top level has no properties"),
+    "no classes key": ("properties: {}\n", "the top level has no classes"),
+    "a third top-level key": (
+        "classes: {}\nproperties: {}\nextra: {}\n",
+        "the top level has the unknown key 'extra'",
+    ),
     "classes is a list": ("classes: [a]\nproperties: {}\n", "classes must be a mapping"),
     "class term without the prefix": (
         document(classes="A:\n  postgres: {table: farm, key: [code]}\n"),
