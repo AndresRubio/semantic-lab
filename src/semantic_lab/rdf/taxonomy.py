@@ -4,27 +4,26 @@ from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import RDF, SKOS
 
 from semantic_lab.domain.errors import TaxonomyError
+from semantic_lab.rdf import turtle
 from semantic_lab.domain.taxonomy import Concept, Taxonomy, build_taxonomy
 
 
-def load_taxonomy(directory: Path) -> Taxonomy:
-    """Read every Turtle file in the directory into one graph and build the taxonomy."""
+def taxonomy_graph(directory: Path) -> Graph:
+    """Read every Turtle file in the directory into one graph."""
     files = sorted(directory.glob("*.ttl"))
     if not files:
         raise TaxonomyError(f"no Turtle files in {directory}")
-    graph = Graph()
-    for file in files:
-        try:
-            graph.parse(file, format="turtle")
-        except (SyntaxError, ValueError, IndexError) as error:
-            # rdflib's Turtle parser raises BadSyntax (a SyntaxError) for bad syntax, a
-            # UnicodeDecodeError (a ValueError) for bytes that are not UTF-8, and a bare
-            # IndexError when the text stops in the middle of a statement.
-            reason = " ".join(str(error).split()) or type(error).__name__
-            raise TaxonomyError(f"{file.name}: not valid Turtle: {reason}") from error
+    return turtle.read(files, TaxonomyError)
+
+
+def taxonomy_of(graph: Graph) -> Taxonomy:
+    """Build the taxonomy from the SKOS concepts of a graph."""
     subjects = sorted(s for s in graph.subjects(RDF.type, SKOS.Concept) if isinstance(s, URIRef))
-    concepts = [_concept(graph, subject) for subject in subjects]
-    return build_taxonomy(concepts)
+    return build_taxonomy([_concept(graph, subject) for subject in subjects])
+
+
+def load_taxonomy(directory: Path) -> Taxonomy:
+    return taxonomy_of(taxonomy_graph(directory))
 
 
 def _literals(graph: Graph, subject: URIRef, predicate: URIRef) -> list[Literal]:

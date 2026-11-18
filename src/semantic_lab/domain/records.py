@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from typing import Any, get_args, get_type_hints
 
 
 @dataclass(frozen=True)
@@ -140,3 +141,39 @@ class Dataset:
     orders: tuple[SalesOrder, ...]
     order_lines: tuple[OrderLine, ...]
     quality_incidents: tuple[QualityIncident, ...]
+
+
+# Each data table with the Dataset attribute that holds its rows, in creation order.
+DATA_TABLES: tuple[tuple[str, str], ...] = (
+    ("cooperative", "cooperatives"),
+    ("cooperative_certification", "certifications"),
+    ("farm", "farms"),
+    ("shipment", "shipments"),
+    ("lot", "lots"),
+    ("lot_farm", "lot_farms"),
+    ("product", "products"),
+    ("product_flavour", "product_flavours"),
+    ("roast_batch", "roast_batches"),
+    ("roast_batch_lot", "roast_batch_lots"),
+    ("customer", "customers"),
+    ("sales_order", "orders"),
+    ("order_line", "order_lines"),
+    ("quality_incident", "quality_incidents"),
+)
+
+
+def _attribute(table: str) -> str:
+    for name, attribute in DATA_TABLES:
+        if name == table:
+            return attribute
+    raise KeyError(table)
+
+
+def record_type(table: str) -> type[Any]:
+    """The record class of a data table. A name that is no data table is a KeyError."""
+    return get_args(get_type_hints(Dataset)[_attribute(table)])[0]
+
+
+def rows(dataset: Dataset, table: str) -> tuple[Any, ...]:
+    """The rows of a data table, in the dataset's order."""
+    return getattr(dataset, _attribute(table))

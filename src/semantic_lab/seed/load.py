@@ -1,34 +1,16 @@
 """The Postgres schema of the seed and the loader that rebuilds it in one transaction."""
 
 from collections.abc import Iterable, Sequence
-from dataclasses import fields, is_dataclass
+from dataclasses import fields
 from importlib.resources import files
-from typing import Any, get_args, get_type_hints
+from typing import Any
 
 import psycopg
 
-from semantic_lab.domain.records import Dataset
+from semantic_lab.domain.records import DATA_TABLES, Dataset, record_type, rows
 from semantic_lab.domain.taxonomy import Taxonomy
 
 CONCEPT_TABLES = ("concept", "concept_alt_label", "concept_closure")
-
-# Each data table with the Dataset attribute that holds its rows, in creation order.
-DATA_TABLES: tuple[tuple[str, str], ...] = (
-    ("cooperative", "cooperatives"),
-    ("cooperative_certification", "certifications"),
-    ("farm", "farms"),
-    ("shipment", "shipments"),
-    ("lot", "lots"),
-    ("lot_farm", "lot_farms"),
-    ("product", "products"),
-    ("product_flavour", "product_flavours"),
-    ("roast_batch", "roast_batches"),
-    ("roast_batch_lot", "roast_batch_lots"),
-    ("customer", "customers"),
-    ("sales_order", "orders"),
-    ("order_line", "order_lines"),
-    ("quality_incident", "quality_incidents"),
-)
 
 # How long the rebuild waits for a lock on one of its tables before it gives up.
 LOCK_TIMEOUT = "5s"
@@ -40,12 +22,9 @@ def _schema() -> str:
     return files("semantic_lab.seed").joinpath("schema.sql").read_text(encoding="utf-8")
 
 
-def _columns(attribute: str) -> tuple[str, ...]:
+def _columns(table: str) -> tuple[str, ...]:
     """The column names of a data table, taken from the fields of its record class."""
-    record = get_args(get_type_hints(Dataset)[attribute])[0]
-    if not is_dataclass(record):
-        raise TypeError(f"Dataset.{attribute} does not hold records")
-    return tuple(field.name for field in fields(record))
+    return tuple(field.name for field in fields(record_type(table)))
 
 
 def _copy(
@@ -102,15 +81,12 @@ def rebuild(
             ("ancestor_key", "descendant_key", "depth"),
             taxonomy.closure(),
         )
-        for table, attribute in DATA_TABLES:
-            columns = _columns(attribute)
+        for table, _ in DATA_TABLES:
+            columns = _columns(table)
             counts[table] = _copy(
                 cursor,
                 table,
                 columns,
-                (
-                    tuple(getattr(record, name) for name in columns)
-                    for record in getattr(dataset, attribute)
-                ),
+                (tuple(getattr(record, name) for name in columns) for record in rows(dataset, table)),
             )
     return counts
