@@ -1,0 +1,83 @@
+# The held-out questions: kept apart from the development ones so that a build is not tuned against them.
+
+[[question]]
+id = "metric-revenue-by-country-2024-q4"
+kind = "metric"
+text = "What was the revenue from October to December 2024 for each origin country? Give the country by its English name and the revenue in euros, rounded to the cent. Revenue is attributed to lots: each order line's amount is split over the lots of its roast batch by their shares, and a lot's origin country is the country of its cooperative's region."
+columns = ["country", "revenue"]
+key = ["country"]
+ordered = false
+sql = """
+select country.label_en as country,
+       round(sum(ol.amount * rbl.share), 2) as revenue
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join roast_batch_lot rbl on rbl.roast_batch_code = ol.roast_batch_code
+join lot l on l.code = rbl.lot_code
+join cooperative c on c.code = l.cooperative_code
+join concept region on region.key = c.region_key
+join concept country on country.key = region.parent_key
+where o.ordered_on >= date '2024-10-01' and o.ordered_on < date '2025-01-01'
+group by country.key, country.label_en
+"""
+
+[[question]]
+id = "metric-average-order-value-by-segment-2025"
+kind = "metric"
+text = "What was the average order value in 2025 for each customer segment? An order's value is the sum of its lines' amounts, in euros. Give the segment and the average, to the cent."
+columns = ["segment", "average_order_value"]
+key = ["segment"]
+ordered = false
+sql = """
+select totals.segment as segment,
+       round(avg(totals.value), 2) as average_order_value
+from (
+  select c.segment, o.code, sum(ol.amount) as value
+  from sales_order o
+  join customer c on c.code = o.customer_code
+  join order_line ol on ol.order_code = o.code
+  where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+  group by c.segment, o.code
+) totals
+group by totals.segment
+"""
+
+[[question]]
+id = "hierarchy-kg-honey-process-2024"
+kind = "hierarchy"
+text = "How many kilograms were sold in 2024 attributed to lots of the honey process or any process grade under it? Give the kilograms, to the gram. Each order line's kilograms are split over the lots of its roast batch by their shares."
+columns = ["kg"]
+key = ["kg"]
+ordered = false
+sql = """
+select round(sum(ol.kg * rbl.share), 3) as kg
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join roast_batch_lot rbl on rbl.roast_batch_code = ol.roast_batch_code
+join lot l on l.code = rbl.lot_code
+join concept_closure cc on cc.descendant_key = l.process_key
+where o.ordered_on >= date '2024-01-01' and o.ordered_on < date '2025-01-01'
+  and cc.ancestor_key = 'process.honey'
+"""
+
+[[question]]
+id = "hierarchy-revenue-floral-by-quarter-2025"
+kind = "hierarchy"
+text = "What was the revenue in 2025 in each quarter of products that have a floral flavour note or any note under floral? Give the quarter as 2025-Q1 to 2025-Q4 and the revenue in euros, rounded to the cent. An order line counts once, however many of its product's notes fall under floral."
+columns = ["quarter", "revenue"]
+key = ["quarter"]
+ordered = false
+sql = """
+select (extract(year from o.ordered_on)::int || '-Q' || extract(quarter from o.ordered_on)::int) as quarter,
+       round(sum(ol.amount), 2) as revenue
+from order_line ol
+join sales_order o on o.code = ol.order_code
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+  and exists (
+    select 1
+    from product_flavour pf
+    join concept_closure cc on cc.descendant_key = pf.flavour_key
+    where pf.product_code = ol.product_code and cc.ancestor_key = 'flavour.floral'
+  )
+group by 1
+"""

@@ -5,15 +5,12 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 import httpx
-import psycopg
 from neo4j import GraphDatabase
 from neo4j.exceptions import ConfigurationError
-from psycopg.conninfo import conninfo_to_dict
 
+from semantic_lab import pg, redaction
 from semantic_lab.config import Settings
 from semantic_lab.semantic import token
-
-HIDDEN = "***"
 
 
 @dataclass(frozen=True)
@@ -24,38 +21,21 @@ class Check:
 
 
 def _failure(service: str, error: Exception, secrets: Iterable[str] = ()) -> Check:
-    """The failed check for an exception: its class and the first line of its message, with
-    every known secret blanked."""
-    lines = str(error).splitlines()
-    name = type(error).__name__
-    detail = f"{name}: {lines[0]}" if lines and lines[0] else name
-    for secret in secrets:
-        if secret:
-            detail = detail.replace(secret, HIDDEN)
-    return Check(service, False, detail)
+    return Check(service, False, redaction.detail(error, secrets))
 
 
 def _unparsable(service: str, error: Exception, what: str) -> Check:
-    """The failed check for an address the driver could not parse. Those messages quote the
-    address, which can hold a password, so the detail quotes nothing from them."""
-    return Check(service, False, f"{type(error).__name__}: invalid {what}")
-
-
-def _dsn_password(dsn: str) -> str:
-    try:
-        return str(conninfo_to_dict(dsn).get("password") or "")
-    except psycopg.ProgrammingError:
-        return ""
+    return Check(service, False, redaction.unparsable_detail(error, what))
 
 
 def postgres(dsn: str, timeout: float = 5.0) -> Check:
     try:
-        with psycopg.connect(dsn, connect_timeout=max(1, int(timeout))) as connection:
+        with pg.connect(dsn, int(timeout)) as connection:
             connection.execute("select 1")
-    except psycopg.ProgrammingError as error:
-        return _unparsable("postgres", error, "DSN")
+    except pg.ConnectError as error:
+        return Check("postgres", False, str(error))
     except Exception as error:
-        return _failure("postgres", error, [_dsn_password(dsn)])
+        return Check("postgres", False, pg.detail(error, dsn))
     return Check("postgres", True, "select 1")
 
 

@@ -1,0 +1,49 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix category: <https://semantic-lab.example/taxonomy/category#> .
+
+<https://semantic-lab.example/taxonomy/category> a skos:ConceptScheme ;
+    skos:notation "category" ;
+    skos:prefLabel "Category"@en, "Categoría"@es .
+
+category:coffee a skos:Concept ;
+    skos:notation "category.coffee" ;
+    skos:prefLabel "Coffee"@en, "Café"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:single-origin a skos:Concept ;
+    skos:notation "category.single-origin" ;
+    skos:prefLabel "Single origin"@en, "Origen único"@es ;
+    skos:broader category:coffee ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:microlot a skos:Concept ;
+    skos:notation "category.microlot" ;
+    skos:prefLabel "Microlot"@en, "Microlote"@es ;
+    skos:altLabel "micro-lot"@en ;
+    skos:broader category:single-origin ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:blend a skos:Concept ;
+    skos:notation "category.blend" ;
+    skos:prefLabel "Blend"@en, "Mezcla"@es ;
+    skos:broader category:coffee ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:espresso-blend a skos:Concept ;
+    skos:notation "category.espresso-blend" ;
+    skos:prefLabel "Espresso blend"@en, "Mezcla para espresso"@es ;
+    skos:broader category:blend ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:filter-blend a skos:Concept ;
+    skos:notation "category.filter-blend" ;
+    skos:prefLabel "Filter blend"@en, "Mezcla para filtro"@es ;
+    skos:broader category:blend ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .
+
+category:decaf a skos:Concept ;
+    skos:notation "category.decaf" ;
+    skos:prefLabel "Decaf"@en, "Descafeinado"@es ;
+    skos:altLabel "decaffeinated"@en ;
+    skos:broader category:coffee ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/category> .

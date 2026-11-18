@@ -1,0 +1,159 @@
+# The development questions: the ones a person iterates on while building an agent.
+
+[[question]]
+id = "metric-revenue-by-country-2025"
+kind = "metric"
+text = "What was the revenue in 2025 for each origin country? Give the country by its English name and the revenue in euros, rounded to the cent. Revenue is attributed to lots: each order line's amount is split over the lots of its roast batch by their shares, and a lot's origin country is the country of its cooperative's region."
+columns = ["country", "revenue"]
+key = ["country"]
+ordered = false
+sql = """
+select country.label_en as country,
+       round(sum(ol.amount * rbl.share), 2) as revenue
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join roast_batch_lot rbl on rbl.roast_batch_code = ol.roast_batch_code
+join lot l on l.code = rbl.lot_code
+join cooperative c on c.code = l.cooperative_code
+join concept region on region.key = c.region_key
+join concept country on country.key = region.parent_key
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+group by country.key, country.label_en
+"""
+
+[[question]]
+id = "metric-revenue-by-quarter-2025"
+kind = "metric"
+text = "What was the revenue in 2025 in each quarter? Give the quarter as 2025-Q1 to 2025-Q4 and the revenue in euros, rounded to the cent. Revenue is the sum of the order lines' amounts, by the date of the order."
+columns = ["quarter", "revenue"]
+key = ["quarter"]
+ordered = false
+sql = """
+select (extract(year from o.ordered_on)::int || '-Q' || extract(quarter from o.ordered_on)::int) as quarter,
+       round(sum(ol.amount), 2) as revenue
+from order_line ol
+join sales_order o on o.code = ol.order_code
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+group by 1
+"""
+
+[[question]]
+id = "metric-top-customers-kg-2025"
+kind = "metric"
+text = "Which five customers bought the most kilograms of coffee in 2025? Give the customer's name and the kilograms, to the gram, largest first. A tie in kilograms is broken by name."
+columns = ["customer", "kg"]
+key = ["customer"]
+ordered = true
+sql = """
+select c.name as customer,
+       round(sum(ol.kg), 3) as kg
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join customer c on c.code = o.customer_code
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+group by c.code, c.name
+order by sum(ol.kg) desc, c.name
+limit 5
+"""
+
+[[question]]
+id = "metric-orders-by-segment-2024"
+kind = "metric"
+text = "How many orders were placed in 2024 in each customer segment? Give the segment and the number of orders."
+columns = ["segment", "orders"]
+key = ["segment"]
+ordered = false
+sql = """
+select c.segment as segment,
+       count(*) as orders
+from sales_order o
+join customer c on c.code = o.customer_code
+where o.ordered_on >= date '2024-01-01' and o.ordered_on < date '2025-01-01'
+group by c.segment
+"""
+
+[[question]]
+id = "metric-organic-lots-2025"
+kind = "metric"
+text = "How many of the lots harvested in 2025 were organic? A lot is organic when its cooperative holds an organic certification that covers the harvest date, both ends of the certification included. Give the number of lots."
+columns = ["lots"]
+key = ["lots"]
+ordered = false
+sql = """
+select count(*) as lots
+from lot l
+where l.harvested_on >= date '2025-01-01' and l.harvested_on < date '2026-01-01'
+  and exists (
+    select 1
+    from cooperative_certification cc
+    where cc.cooperative_code = l.cooperative_code
+      and cc.certification = 'organic'
+      and cc.valid_from <= l.harvested_on
+      and (cc.valid_until is null or l.harvested_on <= cc.valid_until)
+  )
+"""
+
+[[question]]
+id = "hierarchy-kg-fruity-2025"
+kind = "hierarchy"
+text = "How many kilograms were sold in 2025 of products that have a fruity flavour note or any note under fruity? Give the kilograms, to the gram. An order line counts once, however many of its product's notes fall under fruity."
+columns = ["kg"]
+key = ["kg"]
+ordered = false
+sql = """
+select round(sum(ol.kg), 3) as kg
+from order_line ol
+join sales_order o on o.code = ol.order_code
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+  and exists (
+    select 1
+    from product_flavour pf
+    join concept_closure cc on cc.descendant_key = pf.flavour_key
+    where pf.product_code = ol.product_code and cc.ancestor_key = 'flavour.fruity'
+  )
+"""
+
+[[question]]
+id = "hierarchy-revenue-by-continent-2025"
+kind = "hierarchy"
+text = "What was the revenue in 2025 for each origin continent? Give the continent by its English name and the revenue in euros, rounded to the cent. Revenue is attributed to lots by their shares, and a lot's continent is the continent above its cooperative's region."
+columns = ["continent", "revenue"]
+key = ["continent"]
+ordered = false
+sql = """
+select continent.label_en as continent,
+       round(sum(ol.amount * rbl.share), 2) as revenue
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join roast_batch_lot rbl on rbl.roast_batch_code = ol.roast_batch_code
+join lot l on l.code = rbl.lot_code
+join cooperative c on c.code = l.cooperative_code
+join concept_closure cc on cc.descendant_key = c.region_key
+join concept continent on continent.key = cc.ancestor_key
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+  and continent.scheme = 'geo'
+  and continent.parent_key is null
+group by continent.key, continent.label_en
+"""
+
+[[question]]
+id = "hierarchy-margin-by-process-2025"
+kind = "hierarchy"
+text = "What was the margin in 2025 attributed to lots, grouped under the processes washed, natural and honey? A lot of a process under one of them counts for it. Give the process by its English name and the margin in euros, rounded to the cent. The margin of an order line is its amount minus its kilograms times the cost per kilogram of its roast batch, and it is attributed to lots by their shares."
+columns = ["process", "margin"]
+key = ["process"]
+ordered = false
+sql = """
+select grouped.label_en as process,
+       round(sum((ol.amount - ol.kg * rb.cost_per_kg) * rbl.share), 2) as margin
+from order_line ol
+join sales_order o on o.code = ol.order_code
+join roast_batch_lot rbl on rbl.roast_batch_code = ol.roast_batch_code
+join lot l on l.code = rbl.lot_code
+join roast_batch rb on rb.code = ol.roast_batch_code
+join concept_closure cc on cc.descendant_key = l.process_key
+join concept grouped on grouped.key = cc.ancestor_key
+where o.ordered_on >= date '2025-01-01' and o.ordered_on < date '2026-01-01'
+  and grouped.key in ('process.washed', 'process.natural', 'process.honey')
+group by grouped.key, grouped.label_en
+"""

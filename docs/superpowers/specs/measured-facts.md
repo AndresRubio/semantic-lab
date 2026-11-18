@@ -68,3 +68,68 @@ chose (`revenue`, `origin_country`) are its own guesses, since the test's tool d
 no members. Unit 6 has to decide whether to
 parse tool calls out of `content`, to try `gemma4`, or to change the tool description. The
 test stays as written until then.
+
+## The seed (unit 2)
+
+Measured on 2026-11-16 on the same Mac, on the test stack (`semantic-lab-test`, ports 5441,
+7475, 7688 and 4001), never the development stack. The stack was started with
+`docker compose -p semantic-lab-test -f compose.yaml --env-file tests/stack.env up -d`. The
+smoke command printed three `ok` lines on its first run, and the seed ran once against the
+fresh Postgres. The numbers below were measured again on 2026-11-17, after the roast batches
+were made to follow demand and the farm names made unique.
+
+- Seed time: `time uv run --env-file tests/stack.env python -m semantic_lab.commands.seed`
+  took 2.24 s of wall time (0.70 s of user time). It generates the dataset, drops and creates
+  the 17 tables and copies the rows in one transaction. The Mac was still under load from other
+  projects' containers (load average about 10), so the wall time includes some waiting for a CPU.
+  An earlier run the same day, at a load average above 27, took 7.79 s.
+- Database size: `select pg_size_pretty(pg_database_size(current_database()))`, run through
+  `exec -T postgres psql` after the seed, printed `19 MB`.
+- Postgres memory: `docker stats --no-stream` right after the seed showed the Postgres
+  container at 36.59 MiB, against 48 MiB in the table above with no data loaded. The two
+  readings were taken on different stacks and moments, so they say only that loading the seed
+  did not make Postgres grow past tens of megabytes. In the same reading Neo4j was at
+  1.329 GiB and Cube at 163 MiB.
+
+Row counts of the dataset for the default seed (20240101), read with `generate(taxonomy,
+DEFAULT_SEED)` and equal to the seed command's output:
+
+| Table | Rows |
+|---|---|
+| `cooperative` | 15 |
+| `cooperative_certification` | 12 |
+| `farm` | 120 |
+| `shipment` | 80 |
+| `lot` | 600 |
+| `lot_farm` | 1,194 |
+| `product` | 40 |
+| `product_flavour` | 81 |
+| `roast_batch` | 3,000 |
+| `roast_batch_lot` | 4,527 |
+| `customer` | 300 |
+| `sales_order` | 20,000 |
+| `order_line` | 60,000 |
+| `quality_incident` | 2 |
+| `concept` | 70 |
+| `concept_alt_label` | 18 |
+| `concept_closure` | 162 |
+
+The pinned sha256 digest of the default seed's rows, `PINNED` in `tests/seed/test_generate.py`,
+is `79bcee403c3717d5f1c726363ffa73d3a76f74c3322a92397375816d3724a143`. It is the same under
+`PYTHONHASHSEED=0` and `PYTHONHASHSEED=1`.
+
+Revenue for 2025 totals 9,613,814.74 euros whichever way it is cut. The three stored answers
+`questions/expected/metric-revenue-by-country-2025.json` (six countries),
+`hierarchy-revenue-by-continent-2025.json` (three continents) and
+`metric-revenue-by-quarter-2025.json` (four quarters) each sum to that figure when added with
+`Decimal`. The sums were checked by hand-run Python, not by the questions command.
+
+Roast batches follow demand. Every batch draws a planned size of 60 to 400 kg, and a batch that
+sold needs its sales plus an unsold remainder of 2 to 20 percent of them, rounded up to the cent.
+Its output is the larger of the two: a batch that sells little keeps its planned size, and one
+that sells more than that was roasted larger. Read from `generate(taxonomy, DEFAULT_SEED)`, no
+batch sells more than its output, where the share was 876 of 3,000 before the change (0 of 3,000
+now), and none is under 60 kg. Across all 3,000 batches the smallest `output_kg` is 61.04 kg, the
+median 281.745 kg (the mean of the two middle values) and the largest 1,881.00 kg. 26 batches
+have no sales. Only `roast_batch` rows changed from the previous digest, so the twelve stored
+answers are byte for byte the same.

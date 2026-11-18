@@ -8,17 +8,32 @@ Each layer of the design's Architecture section is one package under `src/semant
 `domain`, `seed`, `rdf`, `graph`, `semantic`, `agent`, `evals` and `commands`. A package
 holds one layer, so a change to one store or one tool has a known place.
 
-The import directions that hold today:
+The import directions that hold today, enforced by `tests/guards/test_layers.py`:
 
-- `domain/` imports only the standard library. It is the vocabulary every other layer shares,
-  and a dependency in it would pull that dependency into all of them.
-- `commands/` may import any layer, and nothing imports `commands/`. A command is an entry
-  point that wires layers together, so the layers must not depend on it.
+| Layer | May import from our code | Reason |
+|---|---|---|
+| `domain/` | nothing, and only the standard library from outside | It is the vocabulary every other layer shares, and a dependency in it would pull that dependency into all of them. |
+| `rdf/` | `domain/` | It reads Turtle into the domain's types. It has no reason to know the generator or a store. |
+| `seed/` | `domain/` | The generator modules build the domain's records and are pure, so they read no file, no store and no taxonomy loader, and receive a `Taxonomy` as an argument. `load.py` is the one module that does I/O: it reads `schema.sql` and writes Postgres with `psycopg`. `requirements.py` checks a taxonomy against the tables the generator keys by concept (weights, ports, categories) before `generate` draws anything, so a taxonomy that does not fit fails with one `GenerationError` where it would otherwise raise a `KeyError` deep in a draw. |
+| `evals/` | `domain/` | It reads the question files and runs a reference query on a connection it is given. Today it imports nothing from `domain/`, and the rule keeps it from learning how the seed or a loader produced the rows. |
+| `semantic/` | nothing of ours | The Cube client is a boundary to one service and holds no domain knowledge. |
+| `commands/` | any layer | A command is an entry point that wires layers together. |
 
-Two modules sit at the top level beside the layer packages: `config.py` and `probes.py`.
-`commands/` and the tests import them. The layer packages do not import `probes`. `probes.cube`
-asks Cube's metadata endpoint itself today. Unit 5 adds the Cube client to `semantic/` and
-decides whether the probe goes through that client.
+Nothing imports `commands/`, because the layers must not depend on an entry point. The same holds
+for the top-level modules, and `tests/guards/test_layers.py` checks both. A second guard in that
+file keeps the generator pure: inside `seed/`, only `load.py` may import a third-party module, and
+every other module imports only the standard library, `semantic_lab.domain` and `semantic_lab.seed`. `graph/` and
+`agent/` have no line yet: the unit that adds each one settles which packages it imports,
+writes that down here and adds it to the test.
+
+Four modules sit at the top level beside the layer packages: `config.py`, `pg.py`, `probes.py`
+and `redaction.py`. `commands/` and the tests import them. The layer packages do not import
+`pg` or `probes`, and `tests/guards/test_layers.py` checks it. `pg.py` opens every Postgres
+connection, with a connect timeout and an error line that holds no credential, so a command
+and a probe fail the same way. `probes.cube` asks Cube's metadata endpoint itself today. Unit 5
+adds the Cube client to `semantic/` and decides whether the probe goes through that client.
+`redaction.py` turns an exception into one line that holds no credential, and `pg.py`,
+`probes.py` and the commands share it.
 
 The design settles no other direction. The unit that adds a package settles which packages it
 imports, writes that down here and adds a test for it.
@@ -47,6 +62,9 @@ strings end up in logs, traces and the model's context.
 - Tests mirror `src/`: the test for `src/semantic_lab/x/y.py` is `tests/x/test_y.py`. A reader
   finds a test from the code and the code from the test. A test for a planned layer sits in
   that layer's future directory, as `tests/graph/` and `tests/agent/` do today.
+- A module that holds only constants or type definitions (`seed/names.py`, `seed/planted.py`,
+  `domain/records.py`, `domain/errors.py`) needs no mirror test file, because the tests of the
+  modules that use them cover them.
 - A test that needs Docker is marked `db` and its file ends in `_db.py`.
 - A test that needs Ollama is marked `model` and its file ends in `_model.py`.
 - The marker and the suffix together let a person or a script pick the expensive tests by name.
@@ -64,6 +82,6 @@ stopped being needed.
 - No ORM, no CLI framework, no async and no config system. The lab teaches what these
   would hide, and the code stays short enough to show in an interview.
 - A new runtime dependency needs the owner's yes. The runtime dependencies today are `httpx`,
-  `psycopg[binary]` and `neo4j`. Each one is a cost the owner pays on every upgrade.
+  `psycopg[binary]`, `neo4j` and `rdflib`. Each one is a cost the owner pays on every upgrade.
 - Names are English, because the repository will be shown to interviewers.
 - `ruff check` and `mypy` pass. There is no formatter.

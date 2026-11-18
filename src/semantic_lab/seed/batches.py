@@ -1,0 +1,254 @@
+"""Roast batches: which product is roasted on which day, and from which lots.
+
+A batch may only use lots whose shipment arrived before the roasting day. The recalled lots
+are used by the batches planned for them and by no other, so how many batches a recall
+touches is decided here and not left to chance.
+
+Cumbre roasts to demand, so a batch's output is known only once the orders exist.
+`generate_batches` plans the batches and `finish_batches` sets each output from a drawn size and
+from what was sold.
+"""
+
+import random
+from bisect import bisect_left
+from collections import Counter
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import date, timedelta
+from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
+
+from semantic_lab.domain.records import Product, RoastBatch, RoastBatchLot
+from semantic_lab.seed import planted
+from semantic_lab.seed.draw import decimal_from_hundredths, random_date
+from semantic_lab.seed.products import BLEND_CATEGORIES
+from semantic_lab.seed.supply import Supply
+
+BATCH_COUNT = 3000
+FIRST_ROAST_DAY = date(2024, 1, 2)
+LAST_ROAST_DAY = date(2025, 12, 28)
+# The first batch of each product falls in the first FIRST_BATCH_DAYS days, so orders can start
+# on day one with ten products on offer.
+FIRST_BATCH_DAYS = 4
+# The size every batch is planned at, in hundredths of a kilogram.
+OUTPUT_HUNDREDTHS = (6000, 40000)
+# A batch roasted larger than its drawn size to meet demand keeps this many percent of what it
+# sold, at the least and at the most, as an unsold remainder.
+UNSOLD_PERCENT = (2, 20)
+ROAST_YIELD = Decimal("0.85")
+BLEND_LOTS = (2, 4)
+MAX_BLEND_WEIGHT = 10
+RECALLED_BATCHES = (3, 6)
+# A recalled lot's batches are roasted at least this long before the recall, so the lines that
+# carry them have time to be ordered.
+RECALL_LEAD_DAYS = 30
+
+
+@dataclass(frozen=True)
+class PlannedBatch:
+    """A batch before its output is known."""
+
+    code: str
+    product_code: str
+    roasted_on: date
+    cost_per_kg: Decimal
+
+
+@dataclass(frozen=True)
+class Batches:
+    planned: tuple[PlannedBatch, ...]
+    roast_batch_lots: tuple[RoastBatchLot, ...]
+
+
+@dataclass(frozen=True)
+class _Plan:
+    product: Product
+    roasted_on: date
+    forced_lot: str | None
+
+
+class _Arrivals:
+    """Lot codes in order of arrival, so the lots usable on a day are a prefix."""
+
+    def __init__(self, arrivals: dict[str, date], codes: list[str]) -> None:
+        ordered = sorted((arrivals[code], code) for code in codes)
+        self._days = [day for day, _ in ordered]
+        self._codes = [code for _, code in ordered]
+
+    def before(self, day: date) -> list[str]:
+        return self._codes[: bisect_left(self._days, day)]
+
+
+class _PoolDraw:
+    """Draws lots of one blend's pool so that every pool farm is covered soon and use evens out."""
+
+    def __init__(self, farms_of_lot: dict[str, frozenset[str]]) -> None:
+        self._farms_of_lot = farms_of_lot
+        self._uses: Counter[str] = Counter()
+        self._covered: set[str] = set()
+
+    def pick(self, available: list[str], count: int, rng: random.Random) -> list[str]:
+        chosen: list[str] = []
+        for _ in range(count):
+            lot = min(
+                (code for code in available if code not in chosen),
+                key=lambda code: (
+                    -len(self._farms_of_lot[code] - self._covered),
+                    self._uses[code],
+                    rng.getrandbits(32),
+                ),
+            )
+            chosen.append(lot)
+            self._uses[lot] += 1
+            self._covered |= self._farms_of_lot[lot]
+        return chosen
+
+
+def generate_batches(supply: Supply, rng: random.Random) -> Batches:
+    arrival_of_shipment = {s.code: s.arrived_on for s in supply.shipments}
+    arrival = {lot.code: arrival_of_shipment[lot.shipment_code] for lot in supply.lots}
+    region_of_cooperative = {c.code: c.region_key for c in supply.cooperatives}
+    lot_region = {lot.code: region_of_cooperative[lot.cooperative_code] for lot in supply.lots}
+    usable = [lot.code for lot in supply.lots if lot.code not in planted.RECALLED_LOTS]
+    anywhere = _Arrivals(arrival, usable)
+    by_region = {
+        region: _Arrivals(arrival, [code for code in usable if lot_region[code] == region])
+        for region in sorted({p.origin_region_key for p in supply.products if p.origin_region_key})
+    }
+    farms_of_lot: dict[str, set[str]] = {lot.code: set() for lot in supply.lots}
+    for link in supply.lot_farms:
+        farms_of_lot[link.lot_code].add(link.farm_code)
+    pools = {
+        name: (
+            _Arrivals(arrival, list(codes)),
+            _PoolDraw({code: frozenset(farms_of_lot[code]) for code in codes}),
+        )
+        for name, codes in zip(
+            planted.BLENDS, (planted.ALBA_POOL, planted.BRISA_POOL), strict=True
+        )
+    }
+    price = {lot.code: lot.price_per_kg for lot in supply.lots}
+    batches = []
+    links = []
+    for index, plan in enumerate(_plans(supply, arrival, rng)):
+        product = plan.product
+        if product.origin_region_key is not None:
+            lots = [rng.choice(by_region[product.origin_region_key].before(plan.roasted_on))]
+        else:
+            lots = _blend_lots(plan, anywhere, pools, rng)
+        shares = _shares(len(lots), rng)
+        code = f"B-{index + 1:04d}"
+        for lot, share in sorted(zip(lots, shares, strict=True)):
+            links.append(RoastBatchLot(code, lot, share))
+        batches.append(
+            PlannedBatch(
+                code=code,
+                product_code=product.code,
+                roasted_on=plan.roasted_on,
+                cost_per_kg=_cost_per_kg(price, lots, shares),
+            )
+        )
+    return Batches(tuple(batches), tuple(links))
+
+
+def finish_batches(
+    batches: Batches, sold_kg: Mapping[str, Decimal], rng: random.Random
+) -> tuple[RoastBatch, ...]:
+    """The batches with their output, in the order they were planned.
+
+    Every batch draws a size from `OUTPUT_HUNDREDTHS`. A batch that sold needs its sales plus an
+    unsold remainder of `UNSOLD_PERCENT` of them, rounded up to the cent so the output never falls
+    below the sales. The output is the larger of the two: a batch that sells little keeps its
+    drawn size and the rest is stock, and a batch that sells more than its size was roasted
+    larger to meet demand.
+    """
+    finished = []
+    for batch in batches.planned:
+        output_kg = decimal_from_hundredths(rng.randint(*OUTPUT_HUNDREDTHS))
+        sold = sold_kg.get(batch.code)
+        if sold is not None:
+            percent = 100 + rng.randint(*UNSOLD_PERCENT)
+            needed = (sold * percent / 100).quantize(Decimal("0.01"), rounding=ROUND_CEILING)
+            output_kg = max(output_kg, needed)
+        finished.append(
+            RoastBatch(
+                code=batch.code,
+                product_code=batch.product_code,
+                roasted_on=batch.roasted_on,
+                output_kg=output_kg,
+                cost_per_kg=batch.cost_per_kg,
+            )
+        )
+    return tuple(finished)
+
+
+def recalled_batches(batches: Batches) -> dict[str, tuple[str, ...]]:
+    """For each recalled lot, the codes of the batches that consume it."""
+    found: dict[str, list[str]] = {lot: [] for lot in planted.RECALLED_LOTS}
+    for link in batches.roast_batch_lots:
+        if link.lot_code in found:
+            found[link.lot_code].append(link.roast_batch_code)
+    return {lot: tuple(codes) for lot, codes in found.items()}
+
+
+def _plans(supply: Supply, arrival: dict[str, date], rng: random.Random) -> list[_Plan]:
+    """Every batch's product and day, in day order. Lots are drawn afterwards, in that order."""
+    plans = [
+        _Plan(product, FIRST_ROAST_DAY + timedelta(days=index % FIRST_BATCH_DAYS), None)
+        for index, product in enumerate(supply.products)
+    ]
+    ordinary_blends = [
+        p
+        for p in supply.products
+        if p.category_key in BLEND_CATEGORIES and p.name not in planted.BLENDS
+    ]
+    for lot in planted.RECALLED_LOTS:
+        first = max(arrival[lot] + timedelta(days=1), FIRST_ROAST_DAY)
+        last = planted.RECALL_DATES[lot] - timedelta(days=RECALL_LEAD_DAYS)
+        for _ in range(rng.randint(*RECALLED_BATCHES)):
+            plans.append(_Plan(rng.choice(ordinary_blends), random_date(rng, first, last), lot))
+    while len(plans) < BATCH_COUNT:
+        product = rng.choice(supply.products)
+        plans.append(_Plan(product, random_date(rng, FIRST_ROAST_DAY, LAST_ROAST_DAY), None))
+    return sorted(plans, key=lambda plan: plan.roasted_on)
+
+
+def _blend_lots(
+    plan: _Plan,
+    anywhere: _Arrivals,
+    pools: dict[str, tuple[_Arrivals, _PoolDraw]],
+    rng: random.Random,
+) -> list[str]:
+    count = rng.randint(*BLEND_LOTS)
+    if plan.product.name in pools:
+        arrivals, draw = pools[plan.product.name]
+        return draw.pick(arrivals.before(plan.roasted_on), count, rng)
+    available = anywhere.before(plan.roasted_on)
+    if plan.forced_lot is None:
+        return rng.sample(available, count)
+    return [plan.forced_lot, *rng.sample(available, count - 1)]
+
+
+def _shares(count: int, rng: random.Random) -> list[Decimal]:
+    """`count` shares that sum to exactly 1, each at least 0.03.
+
+    The smallest share comes from the smallest weight against the largest: with the most lots
+    a blend can have (`BLEND_LOTS[1]`), that is 100 // (1 + 3 * MAX_BLEND_WEIGHT) = 3
+    hundredths. The first share also takes the rounding remainder, so it only grows.
+    """
+    if count == 1:
+        return [Decimal("1.00")]
+    weights = [rng.randint(1, MAX_BLEND_WEIGHT) for _ in range(count)]
+    return [decimal_from_hundredths(h) for h in share_hundredths(weights)]
+
+
+def share_hundredths(weights: Sequence[int]) -> list[int]:
+    """Shares in hundredths proportional to `weights`, summing to 100, the first one taking the
+    remainder of the integer division."""
+    hundredths = [100 * weight // sum(weights) for weight in weights]
+    hundredths[0] += 100 - sum(hundredths)
+    return hundredths
+
+
+def _cost_per_kg(price: dict[str, Decimal], lots: list[str], shares: list[Decimal]) -> Decimal:
+    green = sum(share * price[code] for code, share in zip(lots, shares, strict=True))
+    return (green / ROAST_YIELD).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)

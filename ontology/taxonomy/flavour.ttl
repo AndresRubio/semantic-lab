@@ -1,0 +1,143 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix flavour: <https://semantic-lab.example/taxonomy/flavour#> .
+
+<https://semantic-lab.example/taxonomy/flavour> a skos:ConceptScheme ;
+    skos:notation "flavour" ;
+    skos:prefLabel "Flavour"@en, "Sabor"@es .
+
+flavour:fruity a skos:Concept ;
+    skos:notation "flavour.fruity" ;
+    skos:prefLabel "Fruity"@en, "Afrutado"@es ;
+    skos:altLabel "fruit-forward"@en ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:berry a skos:Concept ;
+    skos:notation "flavour.berry" ;
+    skos:prefLabel "Berry"@en, "Bayas"@es ;
+    skos:altLabel "Frutos rojos"@es ;
+    skos:broader flavour:fruity ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:blackberry a skos:Concept ;
+    skos:notation "flavour.blackberry" ;
+    skos:prefLabel "Blackberry"@en, "Mora"@es ;
+    skos:broader flavour:berry ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:raspberry a skos:Concept ;
+    skos:notation "flavour.raspberry" ;
+    skos:prefLabel "Raspberry"@en, "Frambuesa"@es ;
+    skos:broader flavour:berry ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:citrus a skos:Concept ;
+    skos:notation "flavour.citrus" ;
+    skos:prefLabel "Citrus"@en, "Cítrico"@es ;
+    skos:broader flavour:fruity ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:orange a skos:Concept ;
+    skos:notation "flavour.orange" ;
+    skos:prefLabel "Orange"@en, "Naranja"@es ;
+    skos:broader flavour:citrus ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:lemon a skos:Concept ;
+    skos:notation "flavour.lemon" ;
+    skos:prefLabel "Lemon"@en, "Limón"@es ;
+    skos:broader flavour:citrus ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:stone-fruit a skos:Concept ;
+    skos:notation "flavour.stone-fruit" ;
+    skos:prefLabel "Stone fruit"@en, "Fruta de hueso"@es ;
+    skos:broader flavour:fruity ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:peach a skos:Concept ;
+    skos:notation "flavour.peach" ;
+    skos:prefLabel "Peach"@en, "Durazno"@es ;
+    skos:altLabel "Melocotón"@es ;
+    skos:broader flavour:stone-fruit ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:floral a skos:Concept ;
+    skos:notation "flavour.floral" ;
+    skos:prefLabel "Floral"@en, "Floral"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:jasmine a skos:Concept ;
+    skos:notation "flavour.jasmine" ;
+    skos:prefLabel "Jasmine"@en, "Jazmín"@es ;
+    skos:broader flavour:floral ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:rose a skos:Concept ;
+    skos:notation "flavour.rose" ;
+    skos:prefLabel "Rose"@en, "Rosa"@es ;
+    skos:broader flavour:floral ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:sweet a skos:Concept ;
+    skos:notation "flavour.sweet" ;
+    skos:prefLabel "Sweet"@en, "Dulce"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:caramel a skos:Concept ;
+    skos:notation "flavour.caramel" ;
+    skos:prefLabel "Caramel"@en, "Caramelo"@es ;
+    skos:broader flavour:sweet ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:honey a skos:Concept ;
+    skos:notation "flavour.honey" ;
+    skos:prefLabel "Honey"@en, "Miel"@es ;
+    skos:broader flavour:sweet ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:chocolate a skos:Concept ;
+    skos:notation "flavour.chocolate" ;
+    skos:prefLabel "Chocolate"@en, "Chocolate"@es ;
+    skos:broader flavour:sweet ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:cocoa a skos:Concept ;
+    skos:notation "flavour.cocoa" ;
+    skos:prefLabel "Cocoa"@en, "Cacao"@es ;
+    skos:broader flavour:chocolate ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:dark-chocolate a skos:Concept ;
+    skos:notation "flavour.dark-chocolate" ;
+    skos:prefLabel "Dark chocolate"@en, "Chocolate negro"@es ;
+    skos:altLabel "Chocolate amargo"@es ;
+    skos:broader flavour:chocolate ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:nutty a skos:Concept ;
+    skos:notation "flavour.nutty" ;
+    skos:prefLabel "Nutty"@en, "Frutos secos"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:hazelnut a skos:Concept ;
+    skos:notation "flavour.hazelnut" ;
+    skos:prefLabel "Hazelnut"@en, "Avellana"@es ;
+    skos:broader flavour:nutty ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:almond a skos:Concept ;
+    skos:notation "flavour.almond" ;
+    skos:prefLabel "Almond"@en, "Almendra"@es ;
+    skos:broader flavour:nutty ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:spicy a skos:Concept ;
+    skos:notation "flavour.spicy" ;
+    skos:prefLabel "Spicy"@en, "Especiado"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .
+
+flavour:cinnamon a skos:Concept ;
+    skos:notation "flavour.cinnamon" ;
+    skos:prefLabel "Cinnamon"@en, "Canela"@es ;
+    skos:broader flavour:spicy ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/flavour> .

@@ -1,0 +1,50 @@
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix process: <https://semantic-lab.example/taxonomy/process#> .
+
+<https://semantic-lab.example/taxonomy/process> a skos:ConceptScheme ;
+    skos:notation "process" ;
+    skos:prefLabel "Process"@en, "Proceso"@es .
+
+process:washed a skos:Concept ;
+    skos:notation "process.washed" ;
+    skos:prefLabel "Washed"@en, "Lavado"@es ;
+    skos:altLabel "wet process"@en ;
+    skos:altLabel "beneficio húmedo"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:natural a skos:Concept ;
+    skos:notation "process.natural" ;
+    skos:prefLabel "Natural"@en, "Natural"@es ;
+    skos:altLabel "dry process"@en ;
+    skos:altLabel "beneficio seco"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:anaerobic-natural a skos:Concept ;
+    skos:notation "process.anaerobic-natural" ;
+    skos:prefLabel "Anaerobic natural"@en, "Natural anaeróbico"@es ;
+    skos:broader process:natural ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:honey a skos:Concept ;
+    skos:notation "process.honey" ;
+    skos:prefLabel "Honey"@en, "Honey"@es ;
+    skos:altLabel "Miel"@es ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:yellow-honey a skos:Concept ;
+    skos:notation "process.yellow-honey" ;
+    skos:prefLabel "Yellow honey"@en, "Honey amarillo"@es ;
+    skos:broader process:honey ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:red-honey a skos:Concept ;
+    skos:notation "process.red-honey" ;
+    skos:prefLabel "Red honey"@en, "Honey rojo"@es ;
+    skos:broader process:honey ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .
+
+process:black-honey a skos:Concept ;
+    skos:notation "process.black-honey" ;
+    skos:prefLabel "Black honey"@en, "Honey negro"@es ;
+    skos:broader process:honey ;
+    skos:inScheme <https://semantic-lab.example/taxonomy/process> .

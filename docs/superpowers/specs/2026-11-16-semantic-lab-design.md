@@ -84,12 +84,17 @@ cooperatives, ships them, roasts them in batches and sells bags to cafés and sh
 customer is an organisation, so the data holds no people.
 
 The things: country, region, cooperative, farm, lot, shipment, roast batch, product, customer,
-order, order line and quality incident. A farm belongs to a cooperative and sits in a region.
-A lot is harvested from one or more farms and has a processing method, a variety, a harvest
-year and certifications. A shipment carries lots. A roast batch consumes one lot, or several
+order, order line and quality incident. A cooperative points at its region, and a farm belongs
+to a cooperative, so a farm has no region of its own. A lot belongs to one cooperative, is
+harvested from one or more of that cooperative's farms, and has a processing method, a variety
+and a harvest date. Farm names are unique. Certifications are a table of dated periods per cooperative, so a
+certification can lapse. A shipment carries lots. A roast batch consumes one lot, or several
 when the product is a blend. A product is made from roast batches and has a category and
-flavour notes. An order line sells a quantity of a product from one roast batch to a customer.
-A quality incident recalls a lot.
+flavour notes. A one-lot product (single-origin, microlot or decaf) has an origin region and
+is roasted only from the lots of that region. A blend has no origin region. A blend batch
+splits its revenue among its lots by a `share` that sums to 1. Cumbre roasts to demand: a
+batch has a planned size, and it is roasted larger when the orders from it need more, so no
+batch sells more than it produced. An order line sells a quantity of a product from one roast batch to a customer. A quality incident recalls a lot.
 
 The domain was picked because tracing a recalled lot forward to the customers who received it
 is a path question that SQL handles badly and a graph handles in one pattern, while "revenue by
@@ -110,9 +115,10 @@ mid 2025. The graph stays under 100,000 nodes.
 
 The Turtle files are the source of the taxonomies, and Postgres holds a copy. The seed command
 loads every concept into a `concept` table with a short key, and every ancestor and descendant
-pair into a `concept_closure` table. Products, lots and regions point at concept keys. This
-lets Cube filter on a concept key, and it gives the `sql` profile the same hierarchy the other
-profiles get, so the comparison is fair.
+pair into a `concept_closure` table. Cooperatives (through their region), lots (through their
+process) and products (through their category, origin region and flavour notes) point at concept
+keys. This lets Cube filter on a concept key, and it gives the `sql` profile the same hierarchy
+the other profiles get, so the comparison is fair.
 
 ## Questions the system must answer
 
@@ -244,6 +250,11 @@ that. If small models still fail to carry the keys across, the report says so.
 `taxonomy_search` returns concept keys together with the keys of everything narrower, so a
 hierarchy question becomes one Cube filter on a list of keys.
 
+The read-only Postgres role behind `sql_query` has to survive a rebuild. The seed command drops
+and recreates all 17 tables, and a table's grants go with it, so the role needs
+`pg_read_all_data`, or a grant written inside `schema.sql` so that every rebuild repeats it, to
+keep its access afterwards.
+
 Neo4j Community has no roles, so there is no read-only database user. `graph_query` has three
 defences. It runs in a read transaction, which refuses writes, and a test proves that a
 `CREATE` sent through the tool fails. It refuses any query containing `CALL` or `LOAD CSV`
@@ -298,8 +309,10 @@ Ports avoid boe-agent's: Postgres on 5440, Neo4j on 7474 and 7687, Cube on 4000.
 1. Skeleton: the repo, `uv`, ruff, mypy, `scripts/check.sh`, CI, the compose file with three
    pinned images, `AGENTS.md`. It ends with a smoke test that each service answers.
 2. Domain and seed: the Postgres schema, the generator, the planted facts, and the first
-   questions with reference SQL.
-3. Taxonomy and ontology: the Turtle files, the SHACL shapes, the mapping file and its checks.
+   questions with reference SQL. The four taxonomy files and `rdflib` arrive here too,
+   earlier than first planned, because the seed needs the concept keys.
+3. Ontology: the ontology, the SHACL shapes, the mapping file and its checks. The taxonomy
+   files already exist from unit 2.
 4. Knowledge graph: the projection into Neo4j, its constraints, and reference Cypher for the
    path questions.
 5. Semantic layer: the Cube model and views, the `meta.iri` check, and reference Cube queries
