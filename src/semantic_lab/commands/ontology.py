@@ -80,32 +80,30 @@ def run_checks(directory: Path, seed: int, orders: int | None) -> tuple[Check, .
     taxonomy_found, taxonomy = shapes_then_loader(taxonomy_data, shapes, taxonomy_of, TaxonomyError)
     ontology_found, ontology = shapes_then_loader(ontology_data, shapes, ontology_of, OntologyError)
 
-    mapping_covered = (
-        f"{len(mapping.classes)} classes, {len(mapping.properties)} properties, "
-        f"{len(mapping.postgres_columns())} columns"
-    )
-    mapping_found: tuple[str, ...]
+    data_check = Check("data shapes", "not run", ("the mapping check failed",))
     if taxonomy is None or ontology is None:
-        mapping_covered = "not run"
-        mapping_found = tuple(
+        absent = tuple(
             f"the {name} check failed"
             for name, value in (("taxonomy", taxonomy), ("ontology", ontology))
             if value is None
         )
+        mapping_check = Check("mapping", "not run", absent)
     else:
-        mapping_found = problems(mapping, ontology, taxonomy)
-
-    if mapping_found or taxonomy is None or ontology is None:
-        # The export trusts the mapping, so a faulty one would crash it.
-        data_check = Check("data shapes", "not run", ("the mapping check failed",))
-    else:
-        data_check = export_check(
-            taxonomy, ontology, mapping, shapes, taxonomy_data, ontology_data, seed, orders
+        mapping_check = Check(
+            "mapping",
+            f"{len(mapping.classes)} classes, {len(mapping.properties)} properties, "
+            f"{len(mapping.postgres_columns())} columns",
+            problems(mapping, ontology, taxonomy),
         )
+        if not mapping_check.problems:
+            # The export trusts the mapping, so a faulty one would crash it.
+            data_check = export_check(
+                taxonomy, ontology, mapping, shapes, taxonomy_data, ontology_data, seed, orders
+            )
     return (
         Check("taxonomy shapes", f"{len(taxonomy_data)} triples", taxonomy_found),
         Check("ontology shapes", f"{len(ontology_data)} triples", ontology_found),
-        Check("mapping", mapping_covered, mapping_found),
+        mapping_check,
         data_check,
     )
 
