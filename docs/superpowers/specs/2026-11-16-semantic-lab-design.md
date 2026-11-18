@@ -96,6 +96,10 @@ splits its revenue among its lots by a `share` that sums to 1. Cumbre roasts to 
 batch has a planned size, and it is roasted larger when the orders from it need more, so no
 batch sells more than it produced. An order line sells a quantity of a product from one roast batch to a customer. A quality incident recalls a lot.
 
+In the ontology, regions are concepts of the geography taxonomy and have no class of their own.
+`BatchComponent` is a class because RDF has no properties on a relation, and a blend batch's
+`share` belongs to the pair of a batch and a lot.
+
 The domain was picked because tracing a recalled lot forward to the customers who received it
 is a path question that SQL handles badly and a graph handles in one pattern, while "revenue by
 origin country per quarter" is the opposite.
@@ -180,7 +184,8 @@ ontology/      taxonomy/*.ttl (SKOS) · ontology.ttl (RDFS/OWL) · shapes.ttl (S
 cube/model/    cubes/*.yml · views/*.yml
 questions/     the question set, each with its reference query and expected result
 src/semantic_lab/
-  domain/      ids, units, errors: standard library only
+  domain/      the row types, the taxonomy, the ontology and the mapping as values, errors:
+               standard library only
   seed/        the seeded generator and the Postgres schema
   rdf/         load Turtle, validate SHACL, read the mapping
   graph/       project Postgres rows and taxonomy concepts into Neo4j; run read-only Cypher
@@ -204,12 +209,18 @@ Three checks hold the layers together:
 
 1. The Turtle files parse, and the taxonomies and the ontology pass their own SHACL shapes.
    This runs offline.
-2. Every class and property in the ontology has an entry in `mapping.yaml`. Every target an
-   entry names exists: the Cube members are checked offline against the model's YAML files,
-   and the Postgres and Neo4j targets in the database suite. Every Cube member's `meta.iri` is
-   an ontology term whose entry lists that member.
-3. A sample of the generator's rows, taken in memory and exported as RDF through the mapping,
-   passes the SHACL shapes. This runs offline, with no Postgres.
+2. Every class and property in the ontology has an entry in `mapping.yaml`. In unit 3 the
+   check covers the ontology against the mapping, every column of the data tables being mapped
+   once, and the Postgres targets, which exist as tables and columns of the generator's row
+   types and, in the database suite, of the schema. Units 4 and 5 add the Neo4j and Cube
+   targets with their checks: the Cube members are checked offline against the model's YAML
+   files and the Neo4j targets in the database suite, and every Cube member's `meta.iri` is an
+   ontology term whose entry lists that member.
+3. The first 200 orders of the generator's rows, taken in memory with the rows they name and
+   exported as RDF through the mapping, pass the SHACL shapes. This runs offline, with no
+   Postgres, and `--full` validates every row. The plan estimated 16 s for a full validation
+   from a probe with five shapes. With the real shapes it took about two minutes, so the
+   offline suite validates the sample and `--full` runs only when asked.
 
 ## The agent
 
@@ -311,12 +322,13 @@ Ports avoid boe-agent's: Postgres on 5440, Neo4j on 7474 and 7687, Cube on 4000.
 2. Domain and seed: the Postgres schema, the generator, the planted facts, and the first
    questions with reference SQL. The four taxonomy files and `rdflib` arrive here too,
    earlier than first planned, because the seed needs the concept keys.
-3. Ontology: the ontology, the SHACL shapes, the mapping file and its checks. The taxonomy
-   files already exist from unit 2.
-4. Knowledge graph: the projection into Neo4j, its constraints, and reference Cypher for the
-   path questions.
-5. Semantic layer: the Cube model and views, the `meta.iri` check, and reference Cube queries
-   that match the reference SQL.
+3. Ontology: the ontology, the SHACL shapes, the mapping file with its Postgres targets, the
+   `ontology` command that runs the four checks, and the checks themselves. The taxonomy files
+   already exist from unit 2.
+4. Knowledge graph: the projection into Neo4j, its constraints, the Neo4j targets in
+   `mapping.yaml` with their check, and reference Cypher for the path questions.
+5. Semantic layer: the Cube model and views, the Cube targets in `mapping.yaml`, the `meta.iri`
+   check, and reference Cube queries that match the reference SQL.
 6. Agent: the model interface, the loop, the tools, the profiles and the `ask` command.
 7. Evaluation: the runner, the scorer, the two question files and the first report.
 

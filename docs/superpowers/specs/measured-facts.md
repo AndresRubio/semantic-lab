@@ -133,3 +133,38 @@ now), and none is under 60 kg. Across all 3,000 batches the smallest `output_kg`
 median 281.745 kg (the mean of the two middle values) and the largest 1,881.00 kg. 26 batches
 have no sales. Only `roast_batch` rows changed from the previous digest, so the twelve stored
 answers are byte for byte the same.
+
+## The ontology (unit 3)
+
+Measured on 2026-11-18 on the owner's Mac. `uv.lock` pins `pyshacl` 0.40.2 and `pyyaml` 6.0.3.
+
+`pyshacl` 0.40.2 ships a `py.typed` marker and PyYAML 6.0.3 does not, so `types-PyYAML` supplies
+its stubs. With the ontology passed as `ont_graph` and `inference="none"`, a shape with
+`sh:targetClass sl:Product` reported a node typed only `sl:SingleLotProduct`, and the call left
+the data graph as it was. `sh:closed`, `sh:pattern`, `sh:lessThan` on two `xsd:date` values,
+`sh:equals` on a sequence path, `sh:zeroOrMorePath`, `sh:inversePath`, `sh:node`,
+`sh:targetSubjectsOf` and `sh:sparql` with `GROUP BY` and `HAVING` worked as the SHACL
+specification says. A SPARQL `SUM` over `xsd:decimal` shares 0.33, 0.33 and 0.34 compared equal
+to 1. A plain string literal satisfies `sh:datatype xsd:string`. `rdflib` writes a `Decimal` as
+`xsd:decimal` with its scale kept, an `int` as `xsd:integer` and a `date` as `xsd:date`. A
+malformed shape (`sh:minCount "many"`) raises `pyshacl.errors.ConstraintLoadError`, a subclass
+of `pyshacl.errors.ReportableRuntimeError`, as do `ShapeLoadError` and `ValidationFailure`.
+
+For the seeds 20240101, 1, 7 and 99, every rule the data shapes state held on the generated
+rows, checked in plain Python: dates in order, shares summing to 1, one component for a one-lot
+batch and two to four for a blend, lots from the product's region, no batch oversold, farms in
+the lot's cooperative, the code formats and the positive amounts. The SHACL features `sh:xone`,
+`sh:uniqueLang`, `sh:languageIn`, `sh:in` and `sh:or` were not probed in a failing case before
+the fault tables of the shapes tests.
+
+The command reports 442 triples for the four taxonomies and 360 for `ontology.ttl`. The mapping
+holds 14 classes and 50 properties and names 63 distinct Postgres columns. The default seed's
+whole dataset exports to 666,094 triples in 6.2 s, and with the 442 taxonomy triples the data
+graph holds 666,536. The first 200 orders with the rows they name give a data graph of 17,767
+triples.
+
+`python -m semantic_lab.commands.ontology` took 4.43 s of wall time for all four checks on the
+first 200 orders. With `--full` it took 116.28 s on the 666,536 triples and conformed. The test
+that validates the first 200 orders took 2.94 s. The plan's estimate of 16 s for a full
+validation came from a probe with five shapes (16.37 s on 664,730 triples) and does not hold for
+the real shapes, which take about two minutes. `--full` is run by hand and never by a test.
