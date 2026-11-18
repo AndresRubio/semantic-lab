@@ -31,8 +31,11 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
 - `uv run python -m semantic_lab.commands.ontology` [read-only]: runs four checks and prints one
   line each, always in this order, `ok` or `FAIL`: the taxonomy and the ontology against their
   shapes in `shapes.ttl`, the mapping against the ontology and the row types, and the first 200
-  orders exported as RDF against the data shapes. When the mapping check fails, the export does
-  not run and the data line says `not run`. It reads no setting and opens no connection.
+  orders exported as RDF against the data shapes. The shapes run first, so they name a fault
+  before the loaders do. A rule only a loader refuses, such as a cycle, shows as one `loader:`
+  line under its check. When a loader refuses the taxonomy or the ontology, the mapping line
+  says `not run`, and when the mapping line has problems the data line says `not run`. It
+  reads no setting and opens no connection.
   `--orders` changes the sample (0 or more), `--full` exports every order and takes about two
   minutes, `--seed` changes the generator's seed and `--ontology-dir` the folder of the files. It
   exits 1 unless all four are `ok`, and 2 on a bad argument.

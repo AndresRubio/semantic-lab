@@ -179,3 +179,109 @@ def test_a_missing_folder_exits_1_with_one_line_on_stderr(tmp_path: Path) -> Non
     assert err.startswith("ontology:")
     assert err.count("\n") == 1
     assert out == ""
+
+
+NAMES = ["taxonomy shapes", "ontology shapes", "mapping", "data shapes"]
+Fault = tuple[str, str, str]  # the file, the text to find and its replacement
+NO_SPANISH_LABEL: Fault = ("taxonomy/geo.ttl", '"Ethiopia"@en, "Etiopía"@es', '"Ethiopia"@en')
+SECOND_DOMAIN: Fault = (
+    "ontology.ttl",
+    "sl:inRegion a owl:ObjectProperty ;",
+    "sl:inRegion a owl:ObjectProperty ;\n    rdfs:domain sl:Farm ;",
+)
+WASHED_ABOVE_NATURAL: Fault = (
+    "taxonomy/process.ttl",
+    "process:washed a skos:Concept ;",
+    "process:washed a skos:Concept ;\n    skos:broader process:natural ;",
+)
+NATURAL_ABOVE_WASHED: Fault = (
+    "taxonomy/process.ttl",
+    "process:natural a skos:Concept ;",
+    "process:natural a skos:Concept ;\n    skos:broader process:washed ;",
+)
+PRODUCT_BELOW_BLEND: Fault = (
+    "ontology.ttl",
+    "sl:Product a owl:Class ;",
+    "sl:Product a owl:Class ;\n    rdfs:subClassOf sl:Blend ;",
+)
+Found = dict[str, tuple[str, str, list[str]]]
+
+
+def checks(out: str) -> Found:
+    """Each check by name: its status, what it covers and its indented problem lines."""
+    found: Found = {}
+    name = ""
+    for line in out.splitlines():
+        if line.startswith("  "):
+            found[name][2].append(line.strip())
+        else:
+            name = line[6:23].strip()
+            found[name] = (line[:6].strip(), line[24:], [])
+    return found
+
+
+def run_on_broken_copy(tmp_path: Path, *faults: Fault) -> Found:
+    """Apply the faults to a copy of the folder and return the four checks of the command."""
+    folder = copy_folder(tmp_path)
+    for name, old, new in faults:
+        edit(folder / name, old, new)
+    code, out, err = run("--ontology-dir", str(folder), "--orders", "5")
+    assert (code, err) == (1, "")
+    found = checks(out)
+    assert list(found) == NAMES
+    return found
+
+
+def test_a_missing_spanish_label_is_reported_by_the_shape_and_not_by_the_loader(
+    tmp_path: Path,
+) -> None:
+    found = run_on_broken_copy(tmp_path, NO_SPANISH_LABEL)
+    status, _, problems = found["taxonomy shapes"]
+    assert status == "FAIL"
+    assert any("taxonomy/geo#ethiopia" in line for line in problems)
+    assert not any(line.startswith("loader:") for line in problems)
+    assert found["ontology shapes"][0] == "ok"
+    assert found["mapping"] == ("FAIL", "not run", ["the taxonomy check failed"])
+    assert found["data shapes"] == ("FAIL", "not run", ["the mapping check failed"])
+
+
+def test_a_second_domain_is_reported_by_the_shape_and_not_by_the_loader(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, SECOND_DOMAIN)
+    status, _, problems = found["ontology shapes"]
+    assert status == "FAIL"
+    assert any("inRegion" in line for line in problems)
+    assert not any(line.startswith("loader:") for line in problems)
+    assert found["taxonomy shapes"][0] == "ok"
+    assert found["mapping"] == ("FAIL", "not run", ["the ontology check failed"])
+    assert found["data shapes"] == ("FAIL", "not run", ["the mapping check failed"])
+
+
+def test_a_taxonomy_cycle_only_the_loader_refuses_is_one_loader_line(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, WASHED_ABOVE_NATURAL, NATURAL_ABOVE_WASHED)
+    status, _, problems = found["taxonomy shapes"]
+    assert status == "FAIL"
+    assert len(problems) == 1
+    assert problems[0].startswith("loader:")
+    assert "cycle" in problems[0]
+    assert found["mapping"] == ("FAIL", "not run", ["the taxonomy check failed"])
+    assert found["data shapes"] == ("FAIL", "not run", ["the mapping check failed"])
+
+
+def test_an_ontology_cycle_only_the_loader_refuses_is_one_loader_line(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, PRODUCT_BELOW_BLEND)
+    status, _, problems = found["ontology shapes"]
+    assert status == "FAIL"
+    assert len(problems) == 1
+    assert problems[0].startswith("loader:")
+    assert "cycle" in problems[0]
+    assert found["mapping"] == ("FAIL", "not run", ["the ontology check failed"])
+    assert found["data shapes"] == ("FAIL", "not run", ["the mapping check failed"])
+
+
+def test_the_mapping_names_both_absent_values_taxonomy_first(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, NO_SPANISH_LABEL, SECOND_DOMAIN)
+    assert found["mapping"] == (
+        "FAIL",
+        "not run",
+        ["the taxonomy check failed", "the ontology check failed"],
+    )
