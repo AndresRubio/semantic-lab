@@ -37,7 +37,7 @@ def export(dataset: Dataset, taxonomy: Taxonomy, ontology: Ontology, mapping: Ma
     types = _types(mapping, taxonomy)
     graph = Graph()
     graph.bind("sl", NAMESPACE)
-    objects = _reference_builders(ontology, mapping, base, by_iri, taxonomy, concepts)
+    objects = _reference_builders(ontology, mapping, base, by_iri, concepts)
     for table, entry in base.items():
         columns = objects.columns.get(table, ())
         node_of = _node_builder(entry)
@@ -117,13 +117,8 @@ def _reference_builders(
     mapping: Mapping,
     base: dict[str, _Class],
     by_iri: dict[str, ClassEntry],
-    taxonomy: Taxonomy,
     concepts: dict[str, str],
 ) -> _Builders:
-    def concept(key: str) -> URIRef:
-        iri = concepts.get(key)
-        return URIRef(iri if iri is not None else taxonomy.get(key).iri)
-
     def class_of(iri: str, why: str) -> _Class:
         entry = by_iri.get(iri)
         if entry is None or entry.table not in base:
@@ -135,9 +130,19 @@ def _reference_builders(
             )
         return target
 
-    def reference(range_iri: str, why: str) -> Callable[[Any], URIRef]:
+    def reference(range_iri: str, why: str, column: str) -> Callable[[Any], URIRef]:
+        """What turns a value of `column` into the node it names: a concept or a row of a class."""
         if range_iri == CONCEPT:
-            return lambda value: concept(value)
+
+            def concept(key: Any) -> URIRef:
+                iri = concepts.get(key)
+                if iri is None:
+                    raise MappingError(
+                        f"{why}: column {column} holds {key!r}, which is no concept key"
+                    )
+                return URIRef(iri)
+
+            return concept
         prefix = f"{DATA}{class_of(range_iri, why).slug}/"
         return lambda value: URIRef(prefix + quote(str(value), safe=""))
 
@@ -150,20 +155,22 @@ def _reference_builders(
         if entry.link is not None:
             if prop.domain is None:
                 raise MappingError(f"{why}: a link needs a domain")
+            link = entry.link
+            source, target = f"{link.table}.{link.source}", f"{link.table}.{link.target}"
             links.append(
                 _Link(
-                    entry.link.table,
+                    link.table,
                     predicate,
-                    _through(attrgetter(entry.link.source), reference(prop.domain, why)),
-                    _through(attrgetter(entry.link.target), reference(prop.range, why)),
+                    _through(attrgetter(link.source), reference(prop.domain, why, source)),
+                    _through(attrgetter(link.target), reference(prop.range, why, target)),
                 )
             )
             continue
-        if prop.kind == "object":
-            value_of = _skip_null(reference(prop.range, why))
-        else:
-            value_of = _skip_null(_literal(prop.range))
         for table, column in entry.columns:
+            if prop.kind == "object":
+                value_of = _skip_null(reference(prop.range, why, f"{table}.{column}"))
+            else:
+                value_of = _skip_null(_literal(prop.range))
             columns.setdefault(table, []).append((attrgetter(column), predicate, value_of))
     return _Builders(columns, links)
 

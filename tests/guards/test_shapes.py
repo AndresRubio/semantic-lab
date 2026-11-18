@@ -14,7 +14,7 @@ from semantic_lab.rdf.ontology import ontology_graph
 from semantic_lab.rdf import shacl
 from semantic_lab.rdf.shacl import validate
 from semantic_lab.rdf.taxonomy import taxonomy_graph
-from tests.conftest import ONTOLOGY_FILE, TAXONOMY_DIRECTORY
+from tests.support.paths import ONTOLOGY_FILE, TAXONOMY_DIRECTORY
 from tests.support import data_faults
 from tests.support.data_faults import CHANGES, KINDS, data_graph
 
@@ -273,6 +273,24 @@ ONTOLOGY_FAULTS = {
     "a datatype property with a label in French": Fault(
         SL + "dq", "LanguageInConstraintComponent", O_LABEL, onto("dq", '"dq"@es', '"dq"@fr')
     ),
+    "an untyped node with rdfs:subClassOf": Fault(
+        SL + "X", "OrConstraintComponent", add="sl:X rdfs:subClassOf sl:Owner ."
+    ),
+    "a property with a misspelt type": Fault(
+        SL + "op", "OrConstraintComponent", None, onto("op", "owl:ObjectProperty", "owl:ObjectPropery")
+    ),
+    "an untyped node with rdfs:domain": Fault(
+        SL + "x", "OrConstraintComponent", add="sl:x rdfs:domain sl:Owner ."
+    ),
+    "an untyped node with rdfs:range": Fault(
+        SL + "x", "OrConstraintComponent", add="sl:x rdfs:range sl:C ."
+    ),
+    "an untyped node with rdfs:label": Fault(
+        SL + "X", "OrConstraintComponent", add='sl:X rdfs:label "X"@en .'
+    ),
+    "an untyped node with rdfs:comment": Fault(
+        SL + "X", "OrConstraintComponent", add='sl:X rdfs:comment "X"@en .'
+    ),
 }
 
 
@@ -290,6 +308,12 @@ def test_the_graph_the_taxonomy_faults_start_from_conforms(shapes: Graph) -> Non
 
 def test_the_graph_the_ontology_faults_start_from_conforms(shapes: Graph) -> None:
     assert validate(graph_of(ONTOLOGY_LINES), shapes) == ()
+
+
+def test_a_concept_and_a_scheme_may_carry_an_rdfs_comment(shapes: Graph) -> None:
+    extra = f't:a rdfs:comment "a"@en . <{TAXONOMY}t> rdfs:label "t"@en .'
+    graph = graph_of(TAXONOMY_LINES, Fault("", "", add=extra))
+    assert validate(graph, shapes) == ()
 
 
 def one_violation(lines: dict[str, str], fault: Fault, shapes: Graph) -> None:

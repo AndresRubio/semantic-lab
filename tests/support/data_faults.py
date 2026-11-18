@@ -25,7 +25,7 @@ from semantic_lab.domain.taxonomy import Taxonomy
 from semantic_lab.rdf.export import DATA, export
 from semantic_lab.rdf.shacl import validate
 from semantic_lab.rdf.taxonomy import taxonomy_graph
-from tests.conftest import TAXONOMY_DIRECTORY
+from tests.support.paths import TAXONOMY_DIRECTORY
 
 TAXONOMY = "https://semantic-lab.example/taxonomy/"
 SLN = Namespace(NAMESPACE)

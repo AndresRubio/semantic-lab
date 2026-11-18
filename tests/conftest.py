@@ -2,7 +2,6 @@ import os
 import subprocess
 import time
 from collections.abc import Iterator
-from pathlib import Path
 
 import httpx
 import psycopg
@@ -22,12 +21,14 @@ from semantic_lab.rdf.taxonomy import load_taxonomy
 from semantic_lab.seed import generate, load
 from tests.support import envfile
 from tests.support.compose_env import without_lab_settings
+from tests.support.paths import (
+    MAPPING_FILE,
+    ONTOLOGY_FILE,
+    ROOT,
+    SHAPES_FILE,
+    TAXONOMY_DIRECTORY,
+)
 
-ROOT = Path(__file__).resolve().parent.parent
-TAXONOMY_DIRECTORY = ROOT / "ontology" / "taxonomy"
-ONTOLOGY_FILE = ROOT / "ontology" / "ontology.ttl"
-SHAPES_FILE = ROOT / "ontology" / "shapes.ttl"
-MAPPING_FILE = ROOT / "ontology" / "mapping.yaml"
 STACK_ENV = ROOT / "tests" / "stack.env"
 PROJECT = "semantic-lab-test"
 READY_TIMEOUT_SECONDS = 180
@@ -91,7 +92,7 @@ def stack() -> Iterator[Settings]:
 @pytest.fixture(scope="session")
 def seeded(stack: Settings) -> Settings:
     """The test stack's Postgres filled with the repository's taxonomies and the default seed."""
-    taxonomy = load_taxonomy(ROOT / "ontology" / "taxonomy")
+    taxonomy = load_taxonomy(TAXONOMY_DIRECTORY)
     dataset = generate.generate(taxonomy, generate.DEFAULT_SEED)
     with psycopg.connect(stack.postgres_dsn) as connection:
         load.rebuild(connection, taxonomy, dataset)

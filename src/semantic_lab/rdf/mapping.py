@@ -18,19 +18,35 @@ from semantic_lab.domain.ontology import NAMESPACE
 PREFIX = "sl:"
 
 
+class _UniqueKeys(yaml.SafeLoader):
+    """A safe loader that refuses the same key twice in one mapping. PyYAML keeps the last one."""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
+        seen: set[tuple[str, str]] = set()
+        for key, _ in node.value:
+            if not isinstance(key, yaml.ScalarNode):
+                continue
+            if (key.tag, key.value) in seen:
+                raise MappingError(
+                    f"the key {key.value!r} appears twice, on line {key.start_mark.line + 1}"
+                )
+            seen.add((key.tag, key.value))
+        return super().construct_mapping(node, deep)
+
+
 def load_mapping(file: Path) -> Mapping:
     """Read the mapping file. Any fault is a one-line MappingError that starts with its name."""
     name = file.name
     try:
-        document = yaml.safe_load(file.read_text(encoding="utf-8"))
+        text = file.read_text(encoding="utf-8")
     except OSError as error:
         raise MappingError(f"{name}: cannot be read: {error.strerror or error}") from error
     except UnicodeDecodeError as error:
         raise MappingError(f"{name}: is not UTF-8") from error
+    try:
+        return _mapping(yaml.load(text, Loader=_UniqueKeys))
     except yaml.YAMLError as error:
         raise MappingError(f"{name}: is not YAML: {' '.join(str(error).split())}") from error
-    try:
-        return _mapping(document)
     except MappingError as error:
         raise MappingError(f"{name}: {error}") from None
 

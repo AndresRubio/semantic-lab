@@ -16,12 +16,22 @@ class Violation:
     focus: str
     constraint: str  # local name of the constraint component, such as "MinCountConstraintComponent"
     path: str | None  # None when the path is not a single IRI
-    value: str | None
+    value: str | None  # None when there is no value or it is a blank node
     message: str
 
     def line(self) -> str:
+        """One line. The value comes last unless the line already holds it: it is the focus, or
+        the message quotes it, as pyshacl's own messages do."""
         where = f" {self.path}" if self.path else ""
-        return f"{self.focus} {self.constraint}{where}: {self.message}"
+        value = self.value
+        held = (
+            value is None
+            or value == self.focus
+            or f'"{value}"' in self.message
+            or f"<{value}>" in self.message
+        )
+        ending = "" if held else f" (value {value})"
+        return f"{self.focus} {self.constraint}{where}: {self.message}{ending}"
 
 
 def shapes_graph(file: Path) -> Graph:
@@ -84,7 +94,7 @@ def _violations(report: Graph) -> list[Violation]:
                 focus=str(report.value(result, SH.focusNode)),
                 constraint=str(component).rsplit("#", 1)[-1],
                 path=str(path) if isinstance(path, URIRef) else None,
-                value=None if value is None else str(value),
+                value=None if value is None or isinstance(value, BNode) else str(value),
                 message=" ".join(" ".join(messages).split()),
             )
         )

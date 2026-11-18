@@ -1,10 +1,13 @@
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
+from typing import Any
 
 from semantic_lab.domain.errors import MappingError, TaxonomyError
-from semantic_lab.domain.ontology import Ontology
-from semantic_lab.domain.records import DATA_TABLES, columns
+from semantic_lab.domain.ontology import XSD_TYPES, Ontology, Property
+from semantic_lab.domain.records import DATA_TABLES, column_types
 from semantic_lab.domain.taxonomy import Taxonomy
 
 
@@ -70,12 +73,15 @@ def build_mapping(
 
 
 ALL_TABLES = tuple(name for name, _ in DATA_TABLES)
+# What a column must hold for a datatype property of each range. The fit is exact: an int column
+# under xsd:decimal is refused, so the datatype of an exported literal is always the column's.
+RANGE_TYPES: dict[str, type[Any]] = dict(zip(XSD_TYPES, (str, int, Decimal, date), strict=True))
 
 
-def _fields(table: str) -> frozenset[str] | None:
-    """The columns of a data table, or None when the name is no data table."""
+def _fields(table: str) -> dict[str, type[Any]] | None:
+    """The columns of a data table with what each holds, or None when the name is no data table."""
     try:
-        return frozenset(columns(table))
+        return column_types(table)
     except KeyError:
         return None
 
@@ -120,9 +126,9 @@ def _class_problems(mapping: Mapping, taxonomy: Taxonomy) -> list[str]:
         if fields is None:
             lines.append(f"class {entry.iri}: table {entry.table} is no data table")
             continue
-        columns = list(entry.key)
+        named = list(entry.key)
         if entry.when is not None:
-            columns.append(entry.when.column)
+            named.append(entry.when.column)
             for key in entry.when.under:
                 try:
                     taxonomy.get(key)
@@ -130,7 +136,7 @@ def _class_problems(mapping: Mapping, taxonomy: Taxonomy) -> list[str]:
                     lines.append(f"class {entry.iri}: concept key {key} is not in the taxonomy")
         lines += [
             f"class {entry.iri}: {column} is not a column of {entry.table}"
-            for column in columns
+            for column in named
             if column not in fields
         ]
     return lines
@@ -169,22 +175,28 @@ def _hierarchy_problems(mapping: Mapping, ontology: Ontology) -> list[str]:
 def _property_problems(mapping: Mapping, ontology: Ontology) -> list[str]:
     lines: list[str] = []
     entered = {e.table for e in mapping.classes}
-    unconditional = {e.table for e in mapping.classes if e.when is None}
-    kinds = {p.iri: p.kind for p in ontology.properties}
+    base = {e.table: e.iri for e in mapping.classes if e.when is None}
+    domains = _domains(mapping, ontology)
+    terms = {p.iri: p for p in ontology.properties}
     for prop in mapping.properties:
+        term = terms.get(prop.iri)
         for table, column in prop.columns:
-            if table not in unconditional:
+            if table not in base:
                 lines.append(
                     f"property {prop.iri}: column {table}.{column} is on a table with no "
                     "unconditional class entry"
                 )
             fields = _fields(table)
-            if fields is not None and column not in fields:
+            if fields is None:
+                continue
+            if column not in fields:
                 lines.append(f"property {prop.iri}: {column} is not a column of {table}")
+            elif term is not None:
+                lines += _fit_problems(term, table, column, fields[column], base, domains)
         link = prop.link
         if link is None:
             continue
-        if kinds.get(prop.iri) == "datatype":
+        if term is not None and term.kind == "datatype":
             lines.append(f"property {prop.iri} is a datatype property and cannot be a link")
         if link.table in entered:
             lines.append(f"property {prop.iri}: link table {link.table} has a class entry")
@@ -192,12 +204,58 @@ def _property_problems(mapping: Mapping, ontology: Ontology) -> list[str]:
         if fields is None:
             lines.append(f"property {prop.iri}: link table {link.table} is no data table")
             continue
-        lines += [
-            f"property {prop.iri}: {column} is not a column of {link.table}"
-            for column in (link.source, link.target)
-            if column not in fields
-        ]
+        for column in (link.source, link.target):
+            if column not in fields:
+                lines.append(f"property {prop.iri}: {column} is not a column of {link.table}")
+            elif fields[column] is not str:
+                lines.append(_reference_problem(prop.iri, link.table, column, fields[column]))
     return lines
+
+
+def _domains(mapping: Mapping, ontology: Ontology) -> dict[str, set[str]]:
+    """For each table, the classes a property on it may have as its domain: the classes
+    entered on the table and the classes above them."""
+    parents = {c.iri: c.parent for c in ontology.classes}
+    found: dict[str, set[str]] = defaultdict(set)
+    for entry in mapping.classes:
+        iri: str | None = entry.iri
+        while iri is not None and iri not in found[entry.table]:
+            found[entry.table].add(iri)
+            iri = parents.get(iri)
+    return found
+
+
+def _fit_problems(
+    term: Property,
+    table: str,
+    column: str,
+    held: type[Any],
+    base: dict[str, str],
+    domains: dict[str, set[str]],
+) -> list[str]:
+    """The problems of a column under a property: a table outside the domain, a type the range
+    does not take."""
+    lines: list[str] = []
+    if term.domain is not None and table in base and term.domain not in domains[table]:
+        lines.append(
+            f"property {term.iri}: column {table}.{column} is on the table of {base[table]}, "
+            f"and its domain is {term.domain}"
+        )
+    if term.kind == "object":
+        if held is not str:
+            lines.append(_reference_problem(term.iri, table, column, held))
+        return lines
+    needed = RANGE_TYPES.get(term.range)
+    if needed is not None and held is not needed:
+        lines.append(
+            f"property {term.iri}: column {table}.{column} holds {held.__name__}, and its range "
+            f"{term.range} needs {needed.__name__}"
+        )
+    return lines
+
+
+def _reference_problem(iri: str, table: str, column: str, held: type[Any]) -> str:
+    return f"property {iri}: column {table}.{column} holds {held.__name__}, and a reference needs str"
 
 
 def _coverage_problems(mapping: Mapping, tables: tuple[str, ...]) -> list[str]:

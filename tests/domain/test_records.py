@@ -1,9 +1,13 @@
+from datetime import date
+from decimal import Decimal
+
 import pytest
 
 from semantic_lab.domain.records import (
     DATA_TABLES,
     Dataset,
     SalesOrder,
+    column_types,
     columns,
     record_type,
     rows,
@@ -35,3 +39,22 @@ def test_a_name_that_is_no_data_table_has_no_columns() -> None:
 
 def test_rows_returns_the_dataset_attribute(dataset: Dataset) -> None:
     assert rows(dataset, "lot") is dataset.lots
+
+
+def test_a_table_name_gives_the_type_of_each_column_without_its_none() -> None:
+    assert column_types("cooperative_certification") == {
+        "cooperative_code": str,
+        "certification": str,
+        "valid_from": date,
+        "valid_until": date,
+    }
+
+
+def test_every_column_of_every_data_table_holds_one_of_four_types() -> None:
+    held = {kind for table, _ in DATA_TABLES for kind in column_types(table).values()}
+    assert held == {str, int, Decimal, date}
+
+
+def test_a_name_that_is_no_data_table_has_no_column_types() -> None:
+    with pytest.raises(KeyError):
+        column_types("concept")

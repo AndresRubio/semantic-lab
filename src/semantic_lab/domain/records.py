@@ -179,6 +179,18 @@ def columns(table: str) -> tuple[str, ...]:
     return tuple(field.name for field in fields(record_type(table)))
 
 
+def column_types(table: str) -> dict[str, type[Any]]:
+    """The Python type of each column of a data table, a nullable one without its None.
+
+    It reads a field as a plain type or as `X | None`, which is all the record classes use.
+    """
+    found: dict[str, type[Any]] = {}
+    for name, hint in get_type_hints(record_type(table)).items():
+        held = [part for part in get_args(hint) if part is not type(None)]
+        found[name] = held[0] if held else hint
+    return found
+
+
 def rows(dataset: Dataset, table: str) -> tuple[Any, ...]:
     """The rows of a data table, in the dataset's order."""
     return getattr(dataset, _attribute(table))

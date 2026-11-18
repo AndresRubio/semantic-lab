@@ -212,7 +212,9 @@ Three checks hold the layers together:
 2. Every class and property in the ontology has an entry in `mapping.yaml`. In unit 3 the
    check covers the ontology against the mapping, every column of the data tables being mapped
    once, and the Postgres targets, which exist as tables and columns of the generator's row
-   types and, in the database suite, of the schema. Units 4 and 5 add the Neo4j and Cube
+   types and, in the database suite, of the schema. A column also has to fit its property: it
+   sits on a table of the property's domain, and its row type holds what the range needs.
+   Units 4 and 5 add the Neo4j and Cube
    targets with their checks: the Cube members are checked offline against the model's YAML
    files and the Neo4j targets in the database suite, and every Cube member's `meta.iri` is an
    ontology term whose entry lists that member.

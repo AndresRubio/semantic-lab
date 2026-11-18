@@ -44,6 +44,55 @@ def test_a_violation_without_a_path_has_a_shorter_line() -> None:
     assert violation.line() == "f ClassConstraintComponent: m"
 
 
+def test_the_line_ends_with_a_value_the_message_does_not_hold() -> None:
+    violation = Violation("f", "SPARQLConstraintComponent", None, "0.95", "The shares sum to 1.")
+    assert violation.line() == "f SPARQLConstraintComponent: The shares sum to 1. (value 0.95)"
+
+
+def test_the_line_does_not_repeat_the_focus_as_its_value() -> None:
+    violation = Violation("f", "OrConstraintComponent", None, "f", "A node must be typed.")
+    assert violation.line() == "f OrConstraintComponent: A node must be typed."
+
+
+def test_a_blank_node_is_no_value() -> None:
+    shapes = graph(
+        """
+ex:ThingShape a sh:NodeShape ; sh:targetClass ex:Thing ;
+    sh:property [ sh:path ex:part ; sh:class ex:Part ; sh:message "A part is a Part." ] .
+"""
+    )
+    found = validate(graph("ex:a a ex:Thing ; ex:part [ rdfs:label 1 ] ."), shapes)
+    assert [violation.value for violation in found] == [None]
+    assert found[0].line() == f"{EX}a ClassConstraintComponent {EX}part: A part is a Part."
+
+
+@pytest.mark.parametrize(
+    "message", ['It cannot have value: Literal("0.95", datatype=xsd:decimal)', "Value <0.95> is odd"]
+)
+def test_the_line_does_not_repeat_a_value_the_message_holds(message: str) -> None:
+    violation = Violation("f", "ClosedConstraintComponent", "p", "0.95", message)
+    assert violation.line() == f"f ClosedConstraintComponent p: {message}"
+
+
+def test_a_rule_with_its_own_message_reports_the_value_it_selected() -> None:
+    shapes = graph(
+        SHAPES
+        + """
+ex:ThingShape sh:sparql [
+    sh:message "The parts sum to 1." ;
+    sh:select \"\"\"
+        SELECT $this (SUM(?part) AS ?value)
+        WHERE { $this <https://semantic-lab.example/ex#part> ?part . }
+        GROUP BY $this
+        HAVING (SUM(?part) != 1)
+    \"\"\" ] .
+"""
+    )
+    data = graph('ex:a a ex:Thing ; ex:name "a" ; ex:part 0.5, 0.25 .')
+    lines = [violation.line() for violation in validate(data, shapes)]
+    assert lines == [f"{EX}a SPARQLConstraintComponent: The parts sum to 1. (value 0.75)"]
+
+
 def test_an_ill_typed_number_in_a_sum_rule_raises_an_error_that_starts_with_validation() -> None:
     shapes = graph(
         SHAPES

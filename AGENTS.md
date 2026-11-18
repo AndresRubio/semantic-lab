@@ -32,10 +32,15 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
   line each, always in this order, `ok` or `FAIL`: the taxonomy and the ontology against their
   shapes in `shapes.ttl`, the mapping against the ontology and the row types, and the first 200
   orders exported as RDF against the data shapes. The shapes run first and report their
-  violations, and a rule only a loader refuses, such as a cycle, shows as one `loader:` line
-  under its check. The mapping line says `not run` when a loader refused the taxonomy or the
-  ontology, and the data line says `not run` when the mapping line has problems. It
-  reads no setting and opens no connection.
+  violations. When a loader then refuses the taxonomy or the ontology, its reason is the first
+  problem under that check, as one `loader:` line, and the mapping line says `not run`. A
+  `mapping.yaml` the reader refuses, a key written twice for example, makes the mapping line
+  `not read` with the reader's reason, whatever the loaders said, and the two checks before it
+  still run. The mapping check also holds each column against its property: the column sits on
+  a table of the property's domain and holds exactly the Python type the range needs, so an
+  integer column under an `xsd:decimal` property is refused. The data line says `not run`
+  when the mapping line has problems. A Turtle file that cannot be parsed still stops the
+  command with one line on stderr. It reads no setting and opens no connection.
   `--orders` changes the sample (0 or more), `--full` exports every order and takes about two
   minutes, `--seed` changes the generator's seed and `--ontology-dir` the folder of the files. It
   exits 1 unless all four are `ok`, and 2 on a bad argument.

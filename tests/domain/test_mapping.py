@@ -143,6 +143,12 @@ def base() -> World:
     return World(mapping, ontology)
 
 
+def remapped(world: World, prop: Property, entry: PropertyEntry) -> World:
+    """The world with one property and its entry replaced."""
+    name = prop.iri.removeprefix(NAMESPACE)
+    return world.without_property(name).with_terms(properties=(prop,), property_entries=(entry,))
+
+
 def lone(name: str = "Lone") -> tuple[OntologyClass, ...]:
     return (cls(name),)
 
@@ -300,6 +306,53 @@ CASES: dict[str, tuple[Callable[[World], World], tuple[str, ...]]] = {
         ),
         (f"property {iri('tie')} is a datatype property and cannot be a link",),
     ),
+    "property column on the table of another class than its domain": (
+        lambda w: remapped(
+            w,
+            data("altitudeMetres", "Cooperative", INTEGER),
+            column("altitudeMetres", ("farm", "altitude_m")),
+        ),
+        (
+            f"property {iri('altitudeMetres')}: column farm.altitude_m is on the table of "
+            f"{iri('Farm')}, and its domain is {iri('Cooperative')}",
+        ),
+    ),
+    "datatype column of another type than the range": (
+        lambda w: remapped(
+            w, data("altitudeMetres", "Farm"), column("altitudeMetres", ("farm", "altitude_m"))
+        ),
+        (
+            f"property {iri('altitudeMetres')}: column farm.altitude_m holds int, and its range "
+            f"{STRING} needs str",
+        ),
+    ),
+    "reference and number columns swapped": (
+        lambda w: remapped(
+            remapped(
+                w,
+                obj("memberOf", "Farm", "Cooperative"),
+                column("memberOf", ("farm", "altitude_m")),
+            ),
+            data("altitudeMetres", "Farm", INTEGER),
+            column("altitudeMetres", ("farm", "cooperative_code")),
+        ),
+        (
+            f"property {iri('altitudeMetres')}: column farm.cooperative_code holds str, and its "
+            f"range {INTEGER} needs int",
+            f"property {iri('memberOf')}: column farm.altitude_m holds int, and a reference "
+            "needs str",
+        ),
+    ),
+    "link column that holds no text": (
+        lambda w: w.with_terms(
+            properties=(obj("tie", "Farm", "Farm"),),
+            property_entries=(link("tie", "roast_batch_lot", "lot_code", "share"),),
+        ),
+        (
+            f"property {iri('tie')}: column roast_batch_lot.share holds Decimal, and a reference "
+            "needs str",
+        ),
+    ),
     # 5: coverage
     "column mapped by no property": (
         lambda w: w.without_property("altitudeMetres"),
@@ -338,6 +391,23 @@ def test_the_base_world_has_no_problem() -> None:
 def test_each_fault_is_named_on_its_own_line(case: str) -> None:
     build, expected = CASES[case]
     assert build(base()).problems() == tuple(sorted(expected))
+
+
+def test_a_domain_above_the_class_of_the_table_is_accepted() -> None:
+    ontology = build_ontology(
+        [cls("Farm"), cls("SmallFarm", "Farm")],
+        [data("code", None), data("name", "Farm"), obj("memberOf", "Farm", "Farm")],
+    )
+    mapping = build_mapping(
+        [entry("Farm", "cooperative"), entry("SmallFarm", "farm")],
+        [
+            column("code", ("farm", "code"), ("cooperative", "code")),
+            column("name", ("farm", "name"), ("cooperative", "name")),
+            column("memberOf", ("farm", "cooperative_code"), ("cooperative", "region_key")),
+        ],
+    )
+    found = problems(mapping, ontology, TAXONOMY, ("cooperative",))
+    assert found == ()
 
 
 def test_the_lines_come_back_sorted() -> None:

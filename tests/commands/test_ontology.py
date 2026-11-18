@@ -243,24 +243,24 @@ def status_of(found: dict[str, Block]) -> list[str]:
     return [block.status for block in found.values()]
 
 
-def test_a_missing_spanish_label_is_reported_by_the_shape_and_not_by_the_loader(
+def test_a_missing_spanish_label_is_reported_by_the_loader_line_and_by_the_shape(
     tmp_path: Path,
 ) -> None:
     found = run_on_broken_copy(tmp_path, NO_SPANISH_LABEL)
     assert status_of(found) == ["FAIL", "ok", "FAIL", "FAIL"]
     problems = found["taxonomy shapes"].problems
-    assert any("taxonomy/geo#ethiopia" in line for line in problems)
-    assert not any(line.startswith("loader:") for line in problems)
+    assert [line.startswith("loader:") for line in problems] == [True, False]
+    assert "taxonomy/geo#ethiopia MinCountConstraintComponent" in problems[1]
     assert found["mapping"][2:] == ("not run", ["the taxonomy check failed"])
     assert found["data shapes"][2:] == ("not run", ["the mapping check failed"])
 
 
-def test_a_second_domain_is_reported_by_the_shape_and_not_by_the_loader(tmp_path: Path) -> None:
+def test_a_second_domain_is_reported_by_the_loader_line_and_by_the_shape(tmp_path: Path) -> None:
     found = run_on_broken_copy(tmp_path, SECOND_DOMAIN)
     assert status_of(found) == ["ok", "FAIL", "FAIL", "FAIL"]
     problems = found["ontology shapes"].problems
-    assert any("inRegion" in line for line in problems)
-    assert not any(line.startswith("loader:") for line in problems)
+    assert [line.startswith("loader:") for line in problems] == [True, False]
+    assert "inRegion MaxCountConstraintComponent" in problems[1]
     assert found["mapping"][2:] == ("not run", ["the ontology check failed"])
     assert found["data shapes"][2:] == ("not run", ["the mapping check failed"])
 
@@ -295,3 +295,131 @@ def test_the_mapping_names_both_absent_values_taxonomy_first(tmp_path: Path) -> 
         ["the taxonomy check failed", "the ontology check failed"],
     )
     assert found["data shapes"][2:] == ("not run", ["the mapping check failed"])
+
+
+FRENCH_LABEL: Fault = (
+    "taxonomy/process.ttl",
+    "process:honey a skos:Concept ;",
+    'process:honey a skos:Concept ;\n    skos:altLabel "miel"@fr ;',
+)
+
+
+def test_a_loader_refusal_shows_beside_a_violation_it_has_nothing_to_do_with(
+    tmp_path: Path,
+) -> None:
+    found = run_on_broken_copy(tmp_path, FRENCH_LABEL, WASHED_ABOVE_NATURAL, NATURAL_ABOVE_WASHED)
+    assert status_of(found) == ["FAIL", "ok", "FAIL", "FAIL"]
+    problems = found["taxonomy shapes"].problems
+    assert len(problems) == 2
+    assert problems[0].startswith("loader:") and "cycle" in problems[0]
+    assert "process#honey LanguageInConstraintComponent" in problems[1]
+
+
+def test_the_loader_line_survives_the_cap_on_shown_problems(tmp_path: Path) -> None:
+    folder = copy_folder(tmp_path)
+    file = folder / "taxonomy" / "process.ttl"
+    text = file.read_text(encoding="utf-8")
+    extra = "".join(f'process:washed skos:altLabel "x{i}"@fr .\n' for i in range(25))
+    file.write_text(text + extra, encoding="utf-8")
+    edit(file, *WASHED_ABOVE_NATURAL[1:])
+    edit(file, *NATURAL_ABOVE_WASHED[1:])
+    code, out, err = run("--ontology-dir", str(folder), "--orders", "5")
+    problems = blocks(out)[0].problems
+    assert (code, err) == (1, "")
+    assert [line.startswith("loader:") for line in problems[:2]] == [True, False]
+    assert len(problems) == 21
+    assert problems[-1] == "and 6 more"
+
+
+UNKNOWN_KEY: Fault = ("mapping.yaml", "{columns: [lot.weight_kg]}", "{colums: [lot.weight_kg]}")
+TERM_TWICE: Fault = (
+    "mapping.yaml",
+    "  sl:weightKg:\n",
+    "  sl:weightKg:\n    postgres: {columns: [lot.variety]}\n  sl:weightKg:\n",
+)
+
+
+@pytest.mark.parametrize(
+    ("fault", "named"),
+    [(UNKNOWN_KEY, "the unknown key 'colums'"), (TERM_TWICE, "the key 'sl:weightKg' appears twice")],
+)
+def test_a_mapping_file_the_reader_refuses_fails_the_mapping_check_only(
+    tmp_path: Path, fault: Fault, named: str
+) -> None:
+    found = run_on_broken_copy(tmp_path, fault)
+    assert status_of(found) == ["ok", "ok", "FAIL", "FAIL"]
+    assert found["mapping"].covered == "not read"
+    assert len(found["mapping"].problems) == 1
+    assert found["mapping"].problems[0].startswith("mapping.yaml: ")
+    assert named in found["mapping"].problems[0]
+    assert found["data shapes"][2:] == ("not run", ["the mapping check failed"])
+
+
+def test_a_missing_mapping_file_fails_the_mapping_check_only(tmp_path: Path) -> None:
+    folder = copy_folder(tmp_path)
+    (folder / "mapping.yaml").unlink()
+    code, out, err = run("--ontology-dir", str(folder), "--orders", "5")
+    assert (code, err) == (1, "")
+    assert [(block.status, block.covered) for block in blocks(out)][2] == ("FAIL", "not read")
+
+
+NAME_FOR_REGION: Fault = (
+    "mapping.yaml",
+    "{columns: [cooperative.region_key]}",
+    "{columns: [cooperative.name]}",
+)
+REGION_FOR_NAME: Fault = (
+    "mapping.yaml",
+    "{columns: [cooperative.name, farm.name",
+    "{columns: [cooperative.region_key, farm.name",
+)
+
+
+def test_two_text_columns_swapped_fail_the_export_with_one_line(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, NAME_FOR_REGION, REGION_FOR_NAME)
+    assert status_of(found) == ["ok", "ok", "ok", "FAIL"]
+    assert len(found["data shapes"].problems) == 1
+    line = found["data shapes"].problems[0]
+    assert line.startswith("export: property https://semantic-lab.example/ontology#inRegion: ")
+    assert "column cooperative.name holds" in line
+    assert line.endswith("which is no concept key")
+
+
+NUMBER_FOR_TEXT: Fault = (
+    "mapping.yaml",
+    "sl:variety:\n    postgres: {columns: [lot.variety]}",
+    "sl:variety:\n    postgres: {columns: [farm.altitude_m]}",
+)
+TEXT_FOR_NUMBER: Fault = (
+    "mapping.yaml",
+    "sl:altitudeMetres:\n    postgres: {columns: [farm.altitude_m]}",
+    "sl:altitudeMetres:\n    postgres: {columns: [lot.variety]}",
+)
+
+
+def test_a_column_under_a_property_of_another_class_and_type_fails_the_mapping_check(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    found = run_on_broken_copy(tmp_path, TEXT_FOR_NUMBER, NUMBER_FOR_TEXT)
+    assert status_of(found) == ["ok", "ok", "FAIL", "FAIL"]
+    problems = found["mapping"].problems
+    assert any("altitudeMetres: column lot.variety holds str" in line for line in problems)
+    assert any("altitudeMetres: column lot.variety is on the table of" in line for line in problems)
+    assert found["data shapes"][2:] == ("not run", ["the mapping check failed"])
+    # rdflib logs a traceback for each literal whose text does not fit its datatype.
+    assert caplog.records == []
+
+
+MISSPELT_TYPE: Fault = (
+    "ontology.ttl",
+    "sl:inRegion a owl:ObjectProperty ;",
+    "sl:inRegion a owl:ObjectPropery ;",
+)
+
+
+def test_a_term_with_a_misspelt_type_fails_the_ontology_check(tmp_path: Path) -> None:
+    found = run_on_broken_copy(tmp_path, MISSPELT_TYPE)
+    assert status_of(found) == ["ok", "FAIL", "FAIL", "FAIL"]
+    problems = found["ontology shapes"].problems
+    assert len(problems) == 1
+    assert problems[0].startswith("https://semantic-lab.example/ontology#inRegion OrConstraint")

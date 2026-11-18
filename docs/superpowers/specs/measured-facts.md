@@ -150,6 +150,13 @@ to 1. A plain string literal satisfies `sh:datatype xsd:string`. `rdflib` writes
 malformed shape (`sh:minCount "many"`) raises `pyshacl.errors.ConstraintLoadError`, a subclass
 of `pyshacl.errors.ReportableRuntimeError`, as do `ShapeLoadError` and `ValidationFailure`.
 
+`yaml.safe_load` keeps the last of two equal keys and says nothing: with `sl:weightKg` written
+twice in `mapping.yaml`, the command printed four `ok` lines, so the reader now uses a loader
+that refuses the second one. `rdflib` builds a literal whose text does not fit its datatype,
+such as `"SL28"^^xsd:integer`, and logs a Python traceback for each one: a mapping that put
+`lot.variety` under `sl:altitudeMetres` printed 600 of them for the first 5 orders. The mapping
+check now refuses that mapping before the export runs.
+
 For the seeds 20240101, 1, 7 and 99, every rule the data shapes state held on the generated
 rows, checked in plain Python: dates in order, shares summing to 1, one component for a one-lot
 batch and two to four for a blend, lots from the product's region, no batch oversold, farms in

@@ -132,6 +132,16 @@ shape:DatatypeProperty a sh:NodeShape ;
         sh:in ( xsd:string xsd:integer xsd:decimal xsd:date )
     ] .
 
+# The loader finds terms by their type, so one with a misspelt type would vanish without a word.
+# The two SKOS types are here because this shape also meets the taxonomy's graph.
+shape:TypedTerm a sh:NodeShape ;
+    sh:targetSubjectsOf rdfs:label, rdfs:comment, rdfs:domain, rdfs:range, rdfs:subClassOf ;
+    sh:or (
+        [ sh:class owl:Class ] [ sh:class owl:ObjectProperty ] [ sh:class owl:DatatypeProperty ]
+        [ sh:class owl:Ontology ] [ sh:class skos:Concept ] [ sh:class skos:ConceptScheme ]
+    ) ;
+    sh:message "A term of the ontology must be typed owl:Class, owl:ObjectProperty or owl:DatatypeProperty." .
+
 # Data shapes, one per class. Each is closed except Blend and SingleLotProduct, which add
 # rules to the Product shape.
 

@@ -75,37 +75,48 @@ def run_checks(directory: Path, seed: int, orders: int | None) -> tuple[Check, .
     taxonomy_data = taxonomy_graph(directory / "taxonomy")
     ontology_data = ontology_graph(directory / "ontology.ttl")
     shapes = shacl.shapes_graph(directory / "shapes.ttl")
-    mapping = load_mapping(directory / "mapping.yaml")
 
     taxonomy_found, taxonomy = shapes_then_loader(taxonomy_data, shapes, taxonomy_of, TaxonomyError)
     ontology_found, ontology = shapes_then_loader(ontology_data, shapes, ontology_of, OntologyError)
+    mapping_found, mapping = mapping_check(directory / "mapping.yaml", taxonomy, ontology)
 
-    data_check = Check("data shapes", "not run", ("the mapping check failed",))
+    data_found = Check("data shapes", "not run", ("the mapping check failed",))
+    if taxonomy is not None and ontology is not None and mapping is not None:
+        data_found = export_check(
+            taxonomy, ontology, mapping, shapes, taxonomy_data, ontology_data, seed, orders
+        )
+    return (
+        Check("taxonomy shapes", f"{len(taxonomy_data)} triples", taxonomy_found),
+        Check("ontology shapes", f"{len(ontology_data)} triples", ontology_found),
+        mapping_found,
+        data_found,
+    )
+
+
+def mapping_check(
+    file: Path, taxonomy: Taxonomy | None, ontology: Ontology | None
+) -> tuple[Check, Mapping | None]:
+    """The mapping check, and the mapping when it has no problem.
+
+    The export trusts the mapping, so it only gets one that passed.
+    """
+    try:
+        mapping = load_mapping(file)
+    except MappingError as error:
+        return Check("mapping", "not read", (str(error),)), None
     if taxonomy is None or ontology is None:
         absent = tuple(
             f"the {name} check failed"
             for name, value in (("taxonomy", taxonomy), ("ontology", ontology))
             if value is None
         )
-        mapping_check = Check("mapping", "not run", absent)
-    else:
-        mapping_check = Check(
-            "mapping",
-            f"{len(mapping.classes)} classes, {len(mapping.properties)} properties, "
-            f"{len(mapping.postgres_columns())} columns",
-            problems(mapping, ontology, taxonomy),
-        )
-        if not mapping_check.problems:
-            # The export trusts the mapping, so a faulty one would crash it.
-            data_check = export_check(
-                taxonomy, ontology, mapping, shapes, taxonomy_data, ontology_data, seed, orders
-            )
-    return (
-        Check("taxonomy shapes", f"{len(taxonomy_data)} triples", taxonomy_found),
-        Check("ontology shapes", f"{len(ontology_data)} triples", ontology_found),
-        mapping_check,
-        data_check,
+        return Check("mapping", "not run", absent), None
+    covered = (
+        f"{len(mapping.classes)} classes, {len(mapping.properties)} properties, "
+        f"{len(mapping.postgres_columns())} columns"
     )
+    found = problems(mapping, ontology, taxonomy)
+    return Check("mapping", covered, found), None if found else mapping
 
 
 def export_check(
@@ -139,15 +150,16 @@ def export_check(
 def shapes_then_loader[T](
     graph: Graph, shapes: Graph, load: Callable[[Graph], T], refusal: type[Exception]
 ) -> tuple[tuple[str, ...], T | None]:
-    """The shapes' violations of a graph, then its value, which is None when the loader refuses.
+    """The problems of a graph and its value, which is None when the loader refuses.
 
-    A refusal that the shapes did not already report becomes one `loader:` problem.
+    The problems are the shapes' violations. A refusal goes before them as one `loader:` line,
+    so the cap on shown problems never cuts the reason the later checks did not run.
     """
     found = tuple(v.line() for v in shacl.validate(graph, shapes))
     try:
         return found, load(graph)
     except refusal as error:
-        return found or (f"loader: {' '.join(str(error).split())}",), None
+        return (f"loader: {' '.join(str(error).split())}", *found), None
 
 
 if __name__ == "__main__":

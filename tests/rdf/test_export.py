@@ -3,7 +3,7 @@ import dataclasses
 import pytest
 from rdflib import RDF, Graph, Literal, Namespace, URIRef
 
-from semantic_lab.domain.errors import MappingError, TaxonomyError
+from semantic_lab.domain.errors import MappingError
 from semantic_lab.domain.mapping import Mapping
 from semantic_lab.domain.ontology import NAMESPACE, Ontology
 from semantic_lab.domain.records import Dataset
@@ -135,9 +135,19 @@ def test_a_link_from_a_class_with_a_two_column_key_is_refused(sample: Dataset, t
         export(sample, taxonomy, ontology, Mapping(classes=classes, properties=mapping.properties))
 
 
-def test_an_unknown_concept_key_is_refused(sample: Dataset, taxonomy: Taxonomy, ontology: Ontology, mapping: Mapping) -> None:
+def test_a_value_that_is_no_concept_key_is_refused_with_its_property_and_column(sample: Dataset, taxonomy: Taxonomy, ontology: Ontology, mapping: Mapping) -> None:
     bad = dataclasses.replace(sample.lots[0], process_key="process.nope")
     changed = dataclasses.replace(sample, lots=(bad,))
-    with pytest.raises(TaxonomyError):
+    with pytest.raises(MappingError) as raised:
         export(changed, taxonomy, ontology, mapping)
+    assert str(raised.value) == (
+        f"property {SL.process}: column lot.process_key holds 'process.nope', "
+        "which is no concept key"
+    )
 
+
+def test_a_link_value_that_is_no_concept_key_is_refused_with_its_column(sample: Dataset, taxonomy: Taxonomy, ontology: Ontology, mapping: Mapping) -> None:
+    bad = dataclasses.replace(sample.product_flavours[0], flavour_key="flavour.nope")
+    changed = dataclasses.replace(sample, product_flavours=(bad,))
+    with pytest.raises(MappingError, match="column product_flavour.flavour_key holds 'flavour.nope'"):
+        export(changed, taxonomy, ontology, mapping)
