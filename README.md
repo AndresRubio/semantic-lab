@@ -11,7 +11,7 @@ and sells bags to cafés.
 
 ## Status
 
-Units 1 and 2 are built. `docker compose up -d` starts Postgres, Neo4j and Cube on the
+Units 1 to 3 are built. `docker compose up -d` starts Postgres, Neo4j and Cube on the
 development ports, and a smoke command checks that each one answers. A seeded generator
 produces the Cumbre Coffee dataset (15 cooperatives, 600 lots, 20,000 orders and 60,000 order
 lines), and `python -m semantic_lab.commands.seed` loads it into Postgres along with the four
@@ -22,8 +22,14 @@ development, four held out) each carry reference SQL and a stored answer, and
 and what was measured against the running services is in
 [`docs/superpowers/specs/measured-facts.md`](docs/superpowers/specs/measured-facts.md).
 
-Five units remain, from "Order of work" in the design: the ontology (3), the knowledge graph
-(4), the semantic layer (5), the agent (6) and the evaluation (7).
+`ontology/` also holds `ontology.ttl` (14 classes and their properties), `shapes.ttl` (the SHACL
+shapes for the taxonomies, the ontology and the data) and `mapping.yaml`, which says which
+Postgres table and column each ontology term comes from. `python -m
+semantic_lab.commands.ontology` checks the three against each other and against the generator's
+rows exported as RDF, with no database.
+
+Four units remain, from "Order of work" in the design: the knowledge graph (4), the semantic
+layer (5), the agent (6) and the evaluation (7).
 
 ## Licence
 

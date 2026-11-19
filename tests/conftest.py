@@ -2,20 +2,33 @@ import os
 import subprocess
 import time
 from collections.abc import Iterator
-from pathlib import Path
 
 import httpx
 import psycopg
 import pytest
+from rdflib import Graph
 
 from semantic_lab import config, probes
 from semantic_lab.config import Settings
+from semantic_lab.domain.mapping import Mapping
+from semantic_lab.domain.records import Dataset
+from semantic_lab.domain.ontology import Ontology
+from semantic_lab.domain.taxonomy import Taxonomy
+from semantic_lab.rdf.mapping import load_mapping
+from semantic_lab.rdf.ontology import ontology_graph, ontology_of
+from semantic_lab.rdf.shacl import shapes_graph
 from semantic_lab.rdf.taxonomy import load_taxonomy
 from semantic_lab.seed import generate, load
 from tests.support import envfile
 from tests.support.compose_env import without_lab_settings
+from tests.support.paths import (
+    MAPPING_FILE,
+    ONTOLOGY_FILE,
+    ROOT,
+    SHAPES_FILE,
+    TAXONOMY_DIRECTORY,
+)
 
-ROOT = Path(__file__).resolve().parent.parent
 STACK_ENV = ROOT / "tests" / "stack.env"
 PROJECT = "semantic-lab-test"
 READY_TIMEOUT_SECONDS = 180
@@ -79,8 +92,33 @@ def stack() -> Iterator[Settings]:
 @pytest.fixture(scope="session")
 def seeded(stack: Settings) -> Settings:
     """The test stack's Postgres filled with the repository's taxonomies and the default seed."""
-    taxonomy = load_taxonomy(ROOT / "ontology" / "taxonomy")
+    taxonomy = load_taxonomy(TAXONOMY_DIRECTORY)
     dataset = generate.generate(taxonomy, generate.DEFAULT_SEED)
     with psycopg.connect(stack.postgres_dsn) as connection:
         load.rebuild(connection, taxonomy, dataset)
     return stack
+
+
+@pytest.fixture(scope="session")
+def taxonomy() -> Taxonomy:
+    return load_taxonomy(TAXONOMY_DIRECTORY)
+
+
+@pytest.fixture(scope="session")
+def dataset(taxonomy: Taxonomy) -> Dataset:
+    return generate.generate(taxonomy, generate.DEFAULT_SEED)
+
+
+@pytest.fixture(scope="session")
+def ontology() -> Ontology:
+    return ontology_of(ontology_graph(ONTOLOGY_FILE))
+
+
+@pytest.fixture(scope="session")
+def shapes() -> Graph:
+    return shapes_graph(SHAPES_FILE)
+
+
+@pytest.fixture(scope="session")
+def mapping() -> Mapping:
+    return load_mapping(MAPPING_FILE)

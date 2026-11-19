@@ -13,7 +13,7 @@ The import directions that hold today, enforced by `tests/guards/test_layers.py`
 | Layer | May import from our code | Reason |
 |---|---|---|
 | `domain/` | nothing, and only the standard library from outside | It is the vocabulary every other layer shares, and a dependency in it would pull that dependency into all of them. |
-| `rdf/` | `domain/` | It reads Turtle into the domain's types. It has no reason to know the generator or a store. |
+| `rdf/` | `domain/` | It reads Turtle and the mapping into the domain's types, exports a `Dataset` as RDF and validates a graph with SHACL. It has no reason to know the generator or a store. |
 | `seed/` | `domain/` | The generator modules build the domain's records and are pure, so they read no file, no store and no taxonomy loader, and receive a `Taxonomy` as an argument. `load.py` is the one module that does I/O: it reads `schema.sql` and writes Postgres with `psycopg`. `requirements.py` checks a taxonomy against the tables the generator keys by concept (weights, ports, categories) before `generate` draws anything, so a taxonomy that does not fit fails with one `GenerationError` where it would otherwise raise a `KeyError` deep in a draw. |
 | `evals/` | `domain/` | It reads the question files and runs a reference query on a connection it is given. Today it imports nothing from `domain/`, and the rule keeps it from learning how the seed or a loader produced the rows. |
 | `semantic/` | nothing of ours | The Cube client is a boundary to one service and holds no domain knowledge. |
@@ -63,7 +63,7 @@ strings end up in logs, traces and the model's context.
   finds a test from the code and the code from the test. A test for a planned layer sits in
   that layer's future directory, as `tests/graph/` and `tests/agent/` do today.
 - A module that holds only constants or type definitions (`seed/names.py`, `seed/planted.py`,
-  `domain/records.py`, `domain/errors.py`) needs no mirror test file, because the tests of the
+  `domain/errors.py`) needs no mirror test file, because the tests of the
   modules that use them cover them.
 - A test that needs Docker is marked `db` and its file ends in `_db.py`.
 - A test that needs Ollama is marked `model` and its file ends in `_model.py`.
@@ -82,6 +82,6 @@ stopped being needed.
 - No ORM, no CLI framework, no async and no config system. The lab teaches what these
   would hide, and the code stays short enough to show in an interview.
 - A new runtime dependency needs the owner's yes. The runtime dependencies today are `httpx`,
-  `psycopg[binary]`, `neo4j` and `rdflib`. Each one is a cost the owner pays on every upgrade.
+  `psycopg[binary]`, `neo4j`, `rdflib`, `pyshacl` and `pyyaml`. Each one is a cost the owner pays on every upgrade.
 - Names are English, because the repository will be shown to interviewers.
 - `ruff check` and `mypy` pass. There is no formatter.

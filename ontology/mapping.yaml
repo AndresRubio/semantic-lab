@@ -1,0 +1,137 @@
+# Where each ontology term lives in Postgres. `domain.mapping.problems` checks it against the ontology.
+classes:
+  sl:BatchComponent:
+    postgres: {table: roast_batch_lot, key: [roast_batch_code, lot_code]}
+  sl:Blend:
+    postgres:
+      table: product
+      key: [code]
+      when: {column: category_key, under: [category.blend]}
+  sl:Certification:
+    postgres: {table: cooperative_certification, key: [cooperative_code, certification, valid_from]}
+  sl:Cooperative:
+    postgres: {table: cooperative, key: [code]}
+  sl:Customer:
+    postgres: {table: customer, key: [code]}
+  sl:Farm:
+    postgres: {table: farm, key: [code]}
+  sl:Lot:
+    postgres: {table: lot, key: [code]}
+  sl:Order:
+    postgres: {table: sales_order, key: [code]}
+  sl:OrderLine:
+    postgres: {table: order_line, key: [order_code, line_no]}
+  sl:Product:
+    postgres: {table: product, key: [code]}
+  sl:QualityIncident:
+    postgres: {table: quality_incident, key: [code]}
+  sl:RoastBatch:
+    postgres: {table: roast_batch, key: [code]}
+  sl:Shipment:
+    postgres: {table: shipment, key: [code]}
+  sl:SingleLotProduct:
+    postgres:
+      table: product
+      key: [code]
+      when: {column: category_key, under: [category.decaf, category.single-origin]}
+properties:
+  sl:affects:
+    postgres: {columns: [quality_incident.lot_code]}
+  sl:altitudeMetres:
+    postgres: {columns: [farm.altitude_m]}
+  sl:amount:
+    postgres: {columns: [order_line.amount]}
+  sl:arrivedOn:
+    postgres: {columns: [shipment.arrived_on]}
+  sl:bagWeightGrams:
+    postgres: {columns: [product.bag_weight_g]}
+  sl:bags:
+    postgres: {columns: [order_line.bags]}
+  sl:batchOf:
+    postgres: {columns: [roast_batch.product_code]}
+  sl:category:
+    postgres: {columns: [product.category_key]}
+  sl:city:
+    postgres: {columns: [customer.city]}
+  sl:code:
+    postgres: {columns: [cooperative.code, farm.code, shipment.code, lot.code, product.code, roast_batch.code, customer.code, sales_order.code, quality_incident.code]}
+  sl:componentOf:
+    postgres: {columns: [roast_batch_lot.roast_batch_code]}
+  sl:costPerKg:
+    postgres: {columns: [roast_batch.cost_per_kg]}
+  sl:country:
+    postgres: {columns: [customer.country]}
+  sl:departedOn:
+    postgres: {columns: [shipment.departed_on]}
+  sl:description:
+    postgres: {columns: [quality_incident.description]}
+  sl:destinationPort:
+    postgres: {columns: [shipment.destination_port]}
+  sl:flavourNote:
+    postgres: {link: {table: product_flavour, from: product_code, to: flavour_key}}
+  sl:fromBatch:
+    postgres: {columns: [order_line.roast_batch_code]}
+  sl:fromLot:
+    postgres: {columns: [roast_batch_lot.lot_code]}
+  sl:harvestedFrom:
+    postgres: {link: {table: lot_farm, from: lot_code, to: farm_code}}
+  sl:harvestedOn:
+    postgres: {columns: [lot.harvested_on]}
+  sl:heldBy:
+    postgres: {columns: [cooperative_certification.cooperative_code]}
+  sl:inRegion:
+    postgres: {columns: [cooperative.region_key]}
+  sl:kg:
+    postgres: {columns: [order_line.kg]}
+  sl:kind:
+    postgres: {columns: [quality_incident.kind]}
+  sl:lineNo:
+    postgres: {columns: [order_line.line_no]}
+  sl:lineOf:
+    postgres: {columns: [order_line.order_code]}
+  sl:listPrice:
+    postgres: {columns: [product.list_price]}
+  sl:memberOf:
+    postgres: {columns: [farm.cooperative_code]}
+  sl:name:
+    postgres: {columns: [cooperative.name, farm.name, product.name, customer.name]}
+  sl:orderedOn:
+    postgres: {columns: [sales_order.ordered_on]}
+  sl:originPort:
+    postgres: {columns: [shipment.origin_port]}
+  sl:originRegion:
+    postgres: {columns: [product.origin_region_key]}
+  sl:outputKg:
+    postgres: {columns: [roast_batch.output_kg]}
+  sl:placedBy:
+    postgres: {columns: [sales_order.customer_code]}
+  sl:pricePerKg:
+    postgres: {columns: [lot.price_per_kg]}
+  sl:process:
+    postgres: {columns: [lot.process_key]}
+  sl:producedBy:
+    postgres: {columns: [lot.cooperative_code]}
+  sl:reportedOn:
+    postgres: {columns: [quality_incident.reported_on]}
+  sl:roastedOn:
+    postgres: {columns: [roast_batch.roasted_on]}
+  sl:segment:
+    postgres: {columns: [customer.segment]}
+  sl:sells:
+    postgres: {columns: [order_line.product_code]}
+  sl:share:
+    postgres: {columns: [roast_batch_lot.share]}
+  sl:shippedIn:
+    postgres: {columns: [lot.shipment_code]}
+  sl:standard:
+    postgres: {columns: [cooperative_certification.certification]}
+  sl:unitPrice:
+    postgres: {columns: [order_line.unit_price]}
+  sl:validFrom:
+    postgres: {columns: [cooperative_certification.valid_from]}
+  sl:validUntil:
+    postgres: {columns: [cooperative_certification.valid_until]}
+  sl:variety:
+    postgres: {columns: [lot.variety]}
+  sl:weightKg:
+    postgres: {columns: [lot.weight_kg]}

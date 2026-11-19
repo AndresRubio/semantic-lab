@@ -1,0 +1,365 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix sl: <https://semantic-lab.example/ontology#> .
+
+<https://semantic-lab.example/ontology> a owl:Ontology ;
+    rdfs:label "Cumbre Coffee ontology"@en, "Ontología de Cumbre Coffee"@es ;
+    rdfs:comment "The classes and properties of the Cumbre Coffee domain: supply, roasting and sales."@en .
+
+sl:Cooperative a owl:Class ;
+    rdfs:label "Cooperative"@en, "Cooperativa"@es ;
+    rdfs:comment "A producer cooperative that grows and sells green coffee."@en .
+
+sl:Certification a owl:Class ;
+    rdfs:label "Certification"@en, "Certificación"@es ;
+    rdfs:comment "A standard a cooperative holds for a period, such as Fairtrade or Organic."@en .
+
+sl:Farm a owl:Class ;
+    rdfs:label "Farm"@en, "Finca"@es ;
+    rdfs:comment "A farm that belongs to a cooperative and grows coffee at some altitude."@en .
+
+sl:Shipment a owl:Class ;
+    rdfs:label "Shipment"@en, "Embarque"@es ;
+    rdfs:comment "One sea shipment that carries lots from an origin port to a destination port."@en .
+
+sl:Lot a owl:Class ;
+    rdfs:label "Lot"@en, "Lote"@es ;
+    rdfs:comment "A quantity of green coffee from one cooperative, harvested and shipped together."@en .
+
+sl:Product a owl:Class ;
+    rdfs:label "Product"@en, "Producto"@es ;
+    rdfs:comment "A bag of roasted coffee that Cumbre Coffee sells."@en .
+
+sl:Blend a owl:Class ;
+    rdfs:subClassOf sl:Product ;
+    rdfs:label "Blend"@en, "Mezcla"@es ;
+    rdfs:comment "A product made from several origins, in the blend category."@en .
+
+sl:SingleLotProduct a owl:Class ;
+    rdfs:subClassOf sl:Product ;
+    rdfs:label "Single lot product"@en, "Producto de lote único"@es ;
+    rdfs:comment "A product from a single origin or a decaf, in one of those categories."@en .
+
+sl:RoastBatch a owl:Class ;
+    rdfs:label "Roast batch"@en, "Tueste"@es ;
+    rdfs:comment "A roasting run that produces one product from one or more lots."@en .
+
+sl:BatchComponent a owl:Class ;
+    rdfs:label "Batch component"@en, "Componente de tueste"@es ;
+    rdfs:comment "The share of one lot in one roast batch."@en .
+
+sl:Customer a owl:Class ;
+    rdfs:label "Customer"@en, "Cliente"@es ;
+    rdfs:comment "A business that buys roasted coffee."@en .
+
+sl:Order a owl:Class ;
+    rdfs:label "Order"@en, "Pedido"@es ;
+    rdfs:comment "An order that a customer places on a date."@en .
+
+sl:OrderLine a owl:Class ;
+    rdfs:label "Order line"@en, "Línea de pedido"@es ;
+    rdfs:comment "One line of an order: a product, the batch it came from and a quantity."@en .
+
+sl:QualityIncident a owl:Class ;
+    rdfs:label "Quality incident"@en, "Incidencia de calidad"@es ;
+    rdfs:comment "A quality problem reported against a lot."@en .
+
+sl:inRegion a owl:ObjectProperty ;
+    rdfs:domain sl:Cooperative ;
+    rdfs:range skos:Concept ;
+    rdfs:label "in region"@en, "en la región"@es ;
+    rdfs:comment "The region of the geography taxonomy where a cooperative is."@en .
+
+sl:memberOf a owl:ObjectProperty ;
+    rdfs:domain sl:Farm ;
+    rdfs:range sl:Cooperative ;
+    rdfs:label "member of"@en, "miembro de"@es ;
+    rdfs:comment "The cooperative a farm belongs to."@en .
+
+sl:heldBy a owl:ObjectProperty ;
+    rdfs:domain sl:Certification ;
+    rdfs:range sl:Cooperative ;
+    rdfs:label "held by"@en, "en poder de"@es ;
+    rdfs:comment "The cooperative that holds a certification."@en .
+
+sl:producedBy a owl:ObjectProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range sl:Cooperative ;
+    rdfs:label "produced by"@en, "producido por"@es ;
+    rdfs:comment "The cooperative that produced a lot."@en .
+
+sl:harvestedFrom a owl:ObjectProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range sl:Farm ;
+    rdfs:label "harvested from"@en, "cosechado en"@es ;
+    rdfs:comment "A farm that supplied part of a lot."@en .
+
+sl:shippedIn a owl:ObjectProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range sl:Shipment ;
+    rdfs:label "shipped in"@en, "enviado en"@es ;
+    rdfs:comment "The shipment that carried a lot."@en .
+
+sl:process a owl:ObjectProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range skos:Concept ;
+    rdfs:label "process"@en, "proceso"@es ;
+    rdfs:comment "The processing method of a lot, from the process taxonomy."@en .
+
+sl:category a owl:ObjectProperty ;
+    rdfs:domain sl:Product ;
+    rdfs:range skos:Concept ;
+    rdfs:label "category"@en, "categoría"@es ;
+    rdfs:comment "The category of a product, from the category taxonomy."@en .
+
+sl:originRegion a owl:ObjectProperty ;
+    rdfs:domain sl:Product ;
+    rdfs:range skos:Concept ;
+    rdfs:label "origin region"@en, "región de origen"@es ;
+    rdfs:comment "The region a product comes from, from the geography taxonomy."@en .
+
+sl:flavourNote a owl:ObjectProperty ;
+    rdfs:domain sl:Product ;
+    rdfs:range skos:Concept ;
+    rdfs:label "flavour note"@en, "nota de sabor"@es ;
+    rdfs:comment "A flavour note of a product, from the flavour taxonomy."@en .
+
+sl:batchOf a owl:ObjectProperty ;
+    rdfs:domain sl:RoastBatch ;
+    rdfs:range sl:Product ;
+    rdfs:label "batch of"@en, "tueste de"@es ;
+    rdfs:comment "The product a roast batch makes."@en .
+
+sl:componentOf a owl:ObjectProperty ;
+    rdfs:domain sl:BatchComponent ;
+    rdfs:range sl:RoastBatch ;
+    rdfs:label "component of"@en, "componente de"@es ;
+    rdfs:comment "The roast batch a component belongs to."@en .
+
+sl:fromLot a owl:ObjectProperty ;
+    rdfs:domain sl:BatchComponent ;
+    rdfs:range sl:Lot ;
+    rdfs:label "from lot"@en, "del lote"@es ;
+    rdfs:comment "The lot a component takes its coffee from."@en .
+
+sl:placedBy a owl:ObjectProperty ;
+    rdfs:domain sl:Order ;
+    rdfs:range sl:Customer ;
+    rdfs:label "placed by"@en, "hecho por"@es ;
+    rdfs:comment "The customer who placed an order."@en .
+
+sl:lineOf a owl:ObjectProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range sl:Order ;
+    rdfs:label "line of"@en, "línea de"@es ;
+    rdfs:comment "The order an order line belongs to."@en .
+
+sl:sells a owl:ObjectProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range sl:Product ;
+    rdfs:label "sells"@en, "vende"@es ;
+    rdfs:comment "The product an order line sells."@en .
+
+sl:fromBatch a owl:ObjectProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range sl:RoastBatch ;
+    rdfs:label "from batch"@en, "del tueste"@es ;
+    rdfs:comment "The roast batch an order line was filled from."@en .
+
+sl:affects a owl:ObjectProperty ;
+    rdfs:domain sl:QualityIncident ;
+    rdfs:range sl:Lot ;
+    rdfs:label "affects"@en, "afecta a"@es ;
+    rdfs:comment "The lot a quality incident was reported against."@en .
+
+sl:code a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "code"@en, "código"@es ;
+    rdfs:comment "The business code that identifies a record."@en .
+
+sl:name a owl:DatatypeProperty ;
+    rdfs:range xsd:string ;
+    rdfs:label "name"@en, "nombre"@es ;
+    rdfs:comment "The name of a record."@en .
+
+sl:standard a owl:DatatypeProperty ;
+    rdfs:domain sl:Certification ;
+    rdfs:range xsd:string ;
+    rdfs:label "standard"@en, "norma"@es ;
+    rdfs:comment "The name of the certification standard."@en .
+
+sl:originPort a owl:DatatypeProperty ;
+    rdfs:domain sl:Shipment ;
+    rdfs:range xsd:string ;
+    rdfs:label "origin port"@en, "puerto de origen"@es ;
+    rdfs:comment "The port a shipment leaves from."@en .
+
+sl:destinationPort a owl:DatatypeProperty ;
+    rdfs:domain sl:Shipment ;
+    rdfs:range xsd:string ;
+    rdfs:label "destination port"@en, "puerto de destino"@es ;
+    rdfs:comment "The port a shipment arrives at."@en .
+
+sl:variety a owl:DatatypeProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range xsd:string ;
+    rdfs:label "variety"@en, "variedad"@es ;
+    rdfs:comment "The coffee variety of a lot."@en .
+
+sl:segment a owl:DatatypeProperty ;
+    rdfs:domain sl:Customer ;
+    rdfs:range xsd:string ;
+    rdfs:label "segment"@en, "segmento"@es ;
+    rdfs:comment "The market segment of a customer."@en .
+
+sl:city a owl:DatatypeProperty ;
+    rdfs:domain sl:Customer ;
+    rdfs:range xsd:string ;
+    rdfs:label "city"@en, "ciudad"@es ;
+    rdfs:comment "The city of a customer."@en .
+
+sl:country a owl:DatatypeProperty ;
+    rdfs:domain sl:Customer ;
+    rdfs:range xsd:string ;
+    rdfs:label "country"@en, "país"@es ;
+    rdfs:comment "The country of a customer."@en .
+
+sl:kind a owl:DatatypeProperty ;
+    rdfs:domain sl:QualityIncident ;
+    rdfs:range xsd:string ;
+    rdfs:label "kind"@en, "tipo"@es ;
+    rdfs:comment "The kind of a quality incident."@en .
+
+sl:description a owl:DatatypeProperty ;
+    rdfs:domain sl:QualityIncident ;
+    rdfs:range xsd:string ;
+    rdfs:label "description"@en, "descripción"@es ;
+    rdfs:comment "A free-text description of a quality incident."@en .
+
+sl:altitudeMetres a owl:DatatypeProperty ;
+    rdfs:domain sl:Farm ;
+    rdfs:range xsd:integer ;
+    rdfs:label "altitude metres"@en, "altitud en metros"@es ;
+    rdfs:comment "The altitude of a farm in metres."@en .
+
+sl:bagWeightGrams a owl:DatatypeProperty ;
+    rdfs:domain sl:Product ;
+    rdfs:range xsd:integer ;
+    rdfs:label "bag weight grams"@en, "peso de la bolsa en gramos"@es ;
+    rdfs:comment "The weight of one bag of a product in grams."@en .
+
+sl:lineNo a owl:DatatypeProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range xsd:integer ;
+    rdfs:label "line no"@en, "número de línea"@es ;
+    rdfs:comment "The position of a line within its order."@en .
+
+sl:bags a owl:DatatypeProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range xsd:integer ;
+    rdfs:label "bags"@en, "bolsas"@es ;
+    rdfs:comment "The number of bags on an order line."@en .
+
+sl:weightKg a owl:DatatypeProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "weight kg"@en, "peso en kg"@es ;
+    rdfs:comment "The weight of a lot in kilograms."@en .
+
+sl:pricePerKg a owl:DatatypeProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "price per kg"@en, "precio por kg"@es ;
+    rdfs:comment "The price paid per kilogram of a lot."@en .
+
+sl:listPrice a owl:DatatypeProperty ;
+    rdfs:domain sl:Product ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "list price"@en, "precio de lista"@es ;
+    rdfs:comment "The list price of one bag of a product."@en .
+
+sl:outputKg a owl:DatatypeProperty ;
+    rdfs:domain sl:RoastBatch ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "output kg"@en, "producción en kg"@es ;
+    rdfs:comment "The kilograms of roasted coffee a batch produced."@en .
+
+sl:costPerKg a owl:DatatypeProperty ;
+    rdfs:domain sl:RoastBatch ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "cost per kg"@en, "coste por kg"@es ;
+    rdfs:comment "The cost per kilogram of roasted coffee in a batch."@en .
+
+sl:share a owl:DatatypeProperty ;
+    rdfs:domain sl:BatchComponent ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "share"@en, "proporción"@es ;
+    rdfs:comment "The fraction of a roast batch that comes from a lot."@en .
+
+sl:unitPrice a owl:DatatypeProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "unit price"@en, "precio unitario"@es ;
+    rdfs:comment "The price of one bag on an order line."@en .
+
+sl:amount a owl:DatatypeProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "amount"@en, "importe"@es ;
+    rdfs:comment "The money amount of an order line."@en .
+
+sl:kg a owl:DatatypeProperty ;
+    rdfs:domain sl:OrderLine ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "kg"@en, "kg"@es ;
+    rdfs:comment "The kilograms of coffee on an order line."@en .
+
+sl:validFrom a owl:DatatypeProperty ;
+    rdfs:domain sl:Certification ;
+    rdfs:range xsd:date ;
+    rdfs:label "valid from"@en, "válido desde"@es ;
+    rdfs:comment "The first day a certification is valid."@en .
+
+sl:validUntil a owl:DatatypeProperty ;
+    rdfs:domain sl:Certification ;
+    rdfs:range xsd:date ;
+    rdfs:label "valid until"@en, "válido hasta"@es ;
+    rdfs:comment "The last day a certification is valid, when it has ended."@en .
+
+sl:departedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:Shipment ;
+    rdfs:range xsd:date ;
+    rdfs:label "departed on"@en, "salida el"@es ;
+    rdfs:comment "The day a shipment left its origin port."@en .
+
+sl:arrivedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:Shipment ;
+    rdfs:range xsd:date ;
+    rdfs:label "arrived on"@en, "llegada el"@es ;
+    rdfs:comment "The day a shipment reached its destination port."@en .
+
+sl:harvestedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:Lot ;
+    rdfs:range xsd:date ;
+    rdfs:label "harvested on"@en, "cosechado el"@es ;
+    rdfs:comment "The day a lot was harvested."@en .
+
+sl:roastedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:RoastBatch ;
+    rdfs:range xsd:date ;
+    rdfs:label "roasted on"@en, "tostado el"@es ;
+    rdfs:comment "The day a batch was roasted."@en .
+
+sl:orderedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:Order ;
+    rdfs:range xsd:date ;
+    rdfs:label "ordered on"@en, "pedido el"@es ;
+    rdfs:comment "The day an order was placed."@en .
+
+sl:reportedOn a owl:DatatypeProperty ;
+    rdfs:domain sl:QualityIncident ;
+    rdfs:range xsd:date ;
+    rdfs:label "reported on"@en, "reportado el"@es ;
+    rdfs:comment "The day a quality incident was reported."@en .

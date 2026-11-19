@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import date
 from decimal import Decimal
+from typing import Any, get_args, get_type_hints
 
 
 @dataclass(frozen=True)
@@ -140,3 +141,56 @@ class Dataset:
     orders: tuple[SalesOrder, ...]
     order_lines: tuple[OrderLine, ...]
     quality_incidents: tuple[QualityIncident, ...]
+
+
+# Each data table with the Dataset attribute that holds its rows, in creation order.
+DATA_TABLES: tuple[tuple[str, str], ...] = (
+    ("cooperative", "cooperatives"),
+    ("cooperative_certification", "certifications"),
+    ("farm", "farms"),
+    ("shipment", "shipments"),
+    ("lot", "lots"),
+    ("lot_farm", "lot_farms"),
+    ("product", "products"),
+    ("product_flavour", "product_flavours"),
+    ("roast_batch", "roast_batches"),
+    ("roast_batch_lot", "roast_batch_lots"),
+    ("customer", "customers"),
+    ("sales_order", "orders"),
+    ("order_line", "order_lines"),
+    ("quality_incident", "quality_incidents"),
+)
+
+
+def _attribute(table: str) -> str:
+    for name, attribute in DATA_TABLES:
+        if name == table:
+            return attribute
+    raise KeyError(table)
+
+
+def record_type(table: str) -> type[Any]:
+    """The record class of a data table. A name that is no data table is a KeyError."""
+    return get_args(get_type_hints(Dataset)[_attribute(table)])[0]
+
+
+def columns(table: str) -> tuple[str, ...]:
+    """The columns of a data table: its record class's fields, in order. A KeyError if no table."""
+    return tuple(field.name for field in fields(record_type(table)))
+
+
+def column_types(table: str) -> dict[str, type[Any]]:
+    """The Python type of each column of a data table, a nullable one without its None.
+
+    It reads a field as a plain type or as `X | None`, which is all the record classes use.
+    """
+    found: dict[str, type[Any]] = {}
+    for name, hint in get_type_hints(record_type(table)).items():
+        held = [part for part in get_args(hint) if part is not type(None)]
+        found[name] = held[0] if held else hint
+    return found
+
+
+def rows(dataset: Dataset, table: str) -> tuple[Any, ...]:
+    """The rows of a data table, in the dataset's order."""
+    return getattr(dataset, _attribute(table))

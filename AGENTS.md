@@ -3,7 +3,8 @@
 semantic-lab is a learning repository: one invented domain (Cumbre Coffee, an importer and
 roaster) modelled four ways, as a taxonomy, an ontology, a knowledge graph in Neo4j and a
 semantic layer in Cube Core, with an agent on a local Ollama model that answers questions
-over them. Units 1 (the skeleton) and 2 (the domain, the seed and the first questions) are built. The design is
+over them. Units 1 (the skeleton), 2 (the domain, the seed and the first questions) and 3 (the ontology,
+the SHACL shapes and the mapping) are built. The design is
 `docs/superpowers/specs/2026-11-16-semantic-lab-design.md` and the facts measured against the
 running services are in `docs/superpowers/specs/measured-facts.md`. Read `CODING_STANDARDS.md`
 before you write code.
@@ -27,6 +28,22 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
   `DRIFT`, `MISSING` or `ERROR` for each. It exits 1 unless all are `ok`.
 - `uv run --env-file .env python -m semantic_lab.commands.questions --write-expected` [writes]:
   writes `questions/expected/<id>.json` from the database instead of checking it.
+- `uv run python -m semantic_lab.commands.ontology` [read-only]: runs four checks and prints one
+  line each, always in this order, `ok` or `FAIL`: the taxonomy and the ontology against their
+  shapes in `shapes.ttl`, the mapping against the ontology and the row types, and the first 200
+  orders exported as RDF against the data shapes. The shapes run first and report their
+  violations. When a loader then refuses the taxonomy or the ontology, its reason is the first
+  problem under that check, as one `loader:` line, and the mapping line says `not run`. A
+  `mapping.yaml` the reader refuses, a key written twice for example, makes the mapping line
+  `not read` with the reader's reason, whatever the loaders said, and the two checks before it
+  still run. The mapping check also holds each column against its property: the column sits on
+  a table of the property's domain and holds exactly the Python type the range needs, so an
+  integer column under an `xsd:decimal` property is refused. The data line says `not run`
+  when the mapping line has problems. A Turtle file that cannot be parsed still stops the
+  command with one line on stderr. It reads no setting and opens no connection.
+  `--orders` changes the sample (0 or more), `--full` exports every order and takes about two
+  minutes, `--seed` changes the generator's seed and `--ontology-dir` the folder of the files. It
+  exits 1 unless all four are `ok`, and 2 on a bad argument.
 - `scripts/check.sh` [read-only]: ruff, mypy and the offline suite. It records a pass against
   the hash of the working tree, so a second run on an unchanged tree ends at once, and
   `--force` runs the checks again. The record lives in the git directory.
@@ -52,19 +69,23 @@ src/semantic_lab/
   pg.py            opens every Postgres connection, with a timeout and an error with no credential
   probes.py        one probe per service
   redaction.py     one detail line for an exception, with no credential in it
-  domain/          records.py (the row types), taxonomy.py (Taxonomy), errors.py: standard library only
-  rdf/             taxonomy.py: reads the SKOS files with rdflib into a Taxonomy
+  domain/          records.py (the row types), taxonomy.py (Taxonomy), ontology.py (Ontology),
+                   mapping.py (Mapping and its checks), sample.py (first_orders), errors.py:
+                   standard library only
+  rdf/             taxonomy.py, ontology.py and mapping.py read the files into the domain's types,
+                   shacl.py validates a graph against the shapes, export.py turns the rows into RDF
+                   through the mapping, turtle.py reads Turtle files
   seed/            the seeded generator, schema.sql (17 tables) and load.py (the rebuild)
   evals/           questions.py (the question files) and reference.py (runs a reference query)
   semantic/        token.py: the signed token Cube expects (the client is planned, unit 5)
-  commands/        smoke.py, seed.py, questions.py
+  commands/        smoke.py, seed.py, questions.py, ontology.py
   graph/           planned, unit 4
   agent/           planned, unit 6
 tests/             mirrors src/, plus guards/ (repository checks), support/ and stack.env
 cube/model/cubes/  healthcheck.yml, the one cube that lets the smoke probe see Cube answer
 compose.yaml       postgres, neo4j, cube
 ontology/taxonomy/ the four SKOS files: geo, process, flavour and category (70 concepts)
-ontology/          the ontology, the shapes and the mapping are planned, unit 3
+ontology/          ontology.ttl (14 classes), shapes.ttl (SHACL) and mapping.yaml (Postgres targets)
 questions/         dev.toml (8 questions), heldout.toml (4) and expected/, one JSON answer each
 ```
 
