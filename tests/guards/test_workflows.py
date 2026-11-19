@@ -68,3 +68,14 @@ def test_the_pattern_catches_every_way_to_select_the_model_marker(line: str) -> 
 )
 def test_the_pattern_lets_the_other_lines_through(line: str) -> None:
     assert not selects_model(line)
+
+
+def test_a_workflow_runs_the_ontology_command_over_every_order() -> None:
+    # The suite validates the first 200 orders, so a rule that only later rows break needs this.
+    runs = [
+        line.strip()
+        for path in workflow_files()
+        for line in path.read_text().splitlines()
+        if line.strip().startswith("- run:")
+    ]
+    assert [r for r in runs if "semantic_lab.commands.ontology" in r and "--full" in r]

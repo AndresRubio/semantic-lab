@@ -22,15 +22,16 @@ class _UniqueKeys(yaml.SafeLoader):
     """A safe loader that refuses the same key twice in one mapping. PyYAML keeps the last one."""
 
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
-        seen: set[tuple[str, str]] = set()
+        first: dict[tuple[str, str], int] = {}
         for key, _ in node.value:
             if not isinstance(key, yaml.ScalarNode):
                 continue
-            if (key.tag, key.value) in seen:
+            name, line = (key.tag, key.value), key.start_mark.line + 1
+            if name in first:
                 raise MappingError(
-                    f"the key {key.value!r} appears twice, on line {key.start_mark.line + 1}"
+                    f"the key {key.value!r} appears twice, on lines {first[name]} and {line}"
                 )
-            seen.add((key.tag, key.value))
+            first[name] = line
         return super().construct_mapping(node, deep)
 
 

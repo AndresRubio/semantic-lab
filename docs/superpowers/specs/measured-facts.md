@@ -174,4 +174,22 @@ triples.
 first 200 orders. With `--full` it took 116.28 s on the 666,536 triples and conformed. The test
 that validates the first 200 orders took 2.94 s. The plan's estimate of 16 s for a full
 validation came from a probe with five shapes (16.37 s on 664,730 triples) and does not hold for
-the real shapes, which take about two minutes. `--full` is run by hand and never by a test.
+the real shapes, which take about two minutes. No test runs `--full`. The `full` job of CI runs
+it on every pull request. Run by hand on 2026-11-19 on `main` at `f58fbf8`, it conformed on the
+666,536 triples.
+
+Measured on 2026-11-19, against the files as they are on the branch `retro-guards`:
+
+- `python -m tests.support.mutate_shapes` removed each of the 313 rules of the data shapes in
+  turn, and a fault of `tests/support/data_faults.py` noticed every one. Twelve of the rules are
+  a shape's `sh:closed`, which leaves together with its `sh:ignoredProperties`, because pyshacl
+  refuses the second without the first. The run took 8 minutes 38 seconds of wall time on ten cores.
+- Exchanging the Postgres targets of two properties gives 1,225 mappings. The mapping check
+  refuses 1,191 of them, the export refuses 5, and the data shapes report 24, one of them only
+  on the first 200 orders and the rest already on three. No check notices the other 5:
+  `amount` with `unitPrice`, `bags` with `lineNo`, `city` with `country`, `destinationPort`
+  with `originPort`, and `pricePerKg` with `weightKg`. The generator sets an order line's amount
+  to its bags times its unit price, and no shape states that.
+- Removing any one of the 136 lines of `mapping.yaml` that hold content is refused: 134 times by
+  the reader and twice by the mapping check. Writing any one of them twice is refused by the
+  reader all 136 times.
