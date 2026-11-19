@@ -333,6 +333,12 @@ Ports avoid boe-agent's: Postgres on 5440, Neo4j on 7474 and 7687, Cube on 4000.
    check, and reference Cube queries that match the reference SQL.
 6. Agent: the model interface, the loop, the tools, the profiles and the `ask` command.
 7. Evaluation: the runner, the scorer, the two question files and the first report.
+8. Comparison with NVIDIA Auto Ontology: point it at the seeded Postgres, let it draft its
+   semantic layer with no hand edits, and score its answers on the same questions with the
+   unit 7 scorer. It gets its own design first. Its README, read on 2026-11-18, says the
+   default setup sends schema samples to NVIDIA's hosted models and needs four model roles
+   (reasoning, non-reasoning, embedding and rerank). Nothing here has run it, so that design
+   starts by measuring whether it runs on local models.
 
 After that, each with its own design: a small web page for the demo, the AWS deployment, and
 optional experiments (n10s, an MCP server over the same tools, vector search).
