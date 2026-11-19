@@ -347,6 +347,54 @@ Unit 1 is built in a Claude Code session, because nothing can take an issue to a
 in a repo that does not exist. Once it is merged and `/issue-pipeline:setup` has run, units 2
 to 7 can each be one or more GitHub issues for `/issue-pipeline:ship`.
 
+## Later: ideas from AWS's Context Ontology Accelerator
+
+AWS's Context Ontology Accelerator (COA,
+[`aws/context-ontology-accelerator`](https://github.com/aws/context-ontology-accelerator), read
+at release `v0.3.10` on 2026-11-19) does at production scale what this lab does by hand. It
+reads a database's schema, induces an OWL ontology with R2RML mappings to SQL, stores named
+metrics, and answers a question in tiers through an MCP server. Running it is not a candidate:
+its getting-started guide prices a default deployment at "about $1,600/month" while idle, it
+needs an AWS account, and its docs describe no local mode. Five of its ideas fit here. None is
+built or designed. Each would get its own design, as an experiment after unit 7 unless its line
+says otherwise.
+
+1. The ontology as a query layer. COA's mappings let Ontop translate SPARQL over the ontology
+   into SQL over the tables, so the data is never copied into a store. Here `mapping.yaml`
+   already says which table and column each term comes from, and nothing queries the ontology:
+   the `ontology` command only checks it. The experiment generates R2RML from `mapping.yaml`,
+   runs Ontop beside Postgres, adds a `sparql_query` tool and an `ontology` profile, and gives
+   the report a column for it. Ontop is a translator and holds no data, so this does not reopen
+   the choice of Neo4j over a triple store. To confirm first: Ontop's image, its licence and
+   its memory on this Mac. COA gives its Ontop task 1 vCPU and 2 GB by default.
+2. A profile that calls no model. COA's first tier matches a question to a metric by name or
+   synonym (an exact match, then a fuzzy string match at 0.88 or more), runs the metric's
+   stored SQL as written, and declines when part of the question is left over. The same rule
+   over Cube's measures gives the evaluation a baseline: how many questions a matcher answers
+   before any model is asked.
+3. Synonyms on measures. That first tier depends on each metric carrying synonyms. Here every
+   ontology term has an English and a Spanish label, and `ontology.ttl` has no alternative
+   labels. The change adds them to the measurable terms, copies them into each Cube member's
+   `meta` beside `meta.iri`, returns them from `cube_meta()`, and extends the unit 5 check to
+   them. It belongs in unit 5, and idea 2 needs it.
+4. The spread across repetitions in the report. COA's context-manager README calls an A/B of
+   one switch a null result because "every delta" sat "inside its cell's own seed spread".
+   Unit 7 already runs each question three times. The report would print the spread beside
+   each count and treat a difference inside it as no difference.
+5. A mechanical ontology as a baseline for unit 8. COA's default induction makes one class per
+   table, a datatype property per column and an object property per foreign key, before any
+   model describes them. Deriving that from `schema.sql` with no model and comparing it with
+   `ontology.ttl` shows what the hand modelling added (regions as concepts, `BatchComponent`,
+   the two product subclasses) and gives unit 8 a second point of comparison.
+
+Left out on purpose: COA's steward approval states, its roles and namespaces, its Bedrock
+guardrails and its document pipeline, since GraphRAG is a non-goal here. Its MCP server has six
+tools (`list_metrics`, `describe_schema`, `query`, `translate_sparql`, `rag_retrieval`,
+`graph_traversal`), which changes nothing in the MCP experiment listed under "Order of work".
+One caution for the AWS step comes from its docs: its guardrail rewrites a name in a question
+to `{NAME}` before the model sees it, and its README measures the wrong answers that causes. A
+guardrail here should leave a question's literals alone.
+
 ## Later: AWS
 
 Nothing is designed here. Three constraints apply from the first unit so the later step stays
