@@ -136,7 +136,8 @@ Work up the ladder as the change grows:
 The test stack and the development stack together need about twice the memory of one
 (about 1.7 GiB for the development stack with no data loaded, see the measured facts), so
 stop the development stack with `docker compose down` first if the machine is tight.
-Other containers on this Mac, such as boe-agent's on 5433 and 5434, are not ours: leave them.
+Other containers on this Mac, such as the two Postgres ones on 5433 and 5434, are not ours:
+leave them.
 
 ## Rules that bind every change
 

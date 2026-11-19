@@ -67,13 +67,13 @@ chat that looks good and has no measured result behind it.
 ## What is on the machine
 
 Measured on 2026-11-16. The Mac is an M1 Pro with 16 GB. Docker 29.9.1 has 10 CPUs and 8.3 GB
-assigned, and two boe-agent Postgres containers already run on 5433 and 5434. Ollama is
+assigned, and two Postgres containers of another project already run on 5433 and 5434. Ollama is
 0.40.16. `ollama show` lists the `tools` capability for `gemma4:latest` (8.0B, 9.6 GB),
 `qwen2.5-coder:7b` (4.7 GB) and `qwen2.5-coder:3b` (1.9 GB). `nimble:9b-q4_K_M` does not list
 it. `gh` is logged in as AndresRubio.
 
 `gemma4` at 9.6 GB plus the containers is tight on 16 GB, so the default model for
-development is `qwen2.5-coder:7b`, and `gemma4` runs for evaluation with the boe-agent
+development is `qwen2.5-coder:7b`, and `gemma4` runs for evaluation with the other project's
 containers stopped. The compose file caps Neo4j at a 1 GB heap and a 512 MB page cache, which
 is plenty for a graph under 100,000 nodes, so the three containers stay near 3 GB.
 
@@ -314,7 +314,8 @@ check-gate mod can use it, and CI pins its actions to commits. Names are English
 repo will be shown to interviewers. Prose follows the humanizer rules. The repo carries its
 own `AGENTS.md`, a `CLAUDE.md` that imports it, and a `CODING_STANDARDS.md`.
 
-Ports avoid boe-agent's: Postgres on 5440, Neo4j on 7474 and 7687, Cube on 4000.
+Ports avoid the two already taken, 5433 and 5434: Postgres on 5440, Neo4j on 7474 and 7687,
+Cube on 4000.
 
 ## Order of work
 
@@ -352,7 +353,7 @@ to 7 can each be one or more GitHub issues for `/issue-pipeline:ship`.
 Nothing is designed here. Three constraints apply from the first unit so the later step stays
 small: every address, port and credential comes from the environment; the model sits behind
 the interface in `agent/`; and the whole stack runs from one compose file. The expected shape
-follows boe-agent: one EC2 machine with the compose stack and Ollama, Pulumi in Python, and a
+is one EC2 machine with the compose stack and Ollama, Pulumi in Python, and a
 script that starts and stops it around an interview. Neo4j Community runs there in its
 container. Aura Free is the alternative for the graph: its limit is 200,000 nodes and 400,000
 relationships, and it pauses after three days without use.
