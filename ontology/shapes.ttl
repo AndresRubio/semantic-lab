@@ -12,7 +12,8 @@
     sh:declare
         [ sh:prefix "sl" ; sh:namespace "https://semantic-lab.example/ontology#"^^xsd:anyURI ] ,
         [ sh:prefix "skos" ; sh:namespace "http://www.w3.org/2004/02/skos/core#"^^xsd:anyURI ] ,
-        [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] .
+        [ sh:prefix "rdf" ; sh:namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"^^xsd:anyURI ] ,
+        [ sh:prefix "xsd" ; sh:namespace "http://www.w3.org/2001/XMLSchema#"^^xsd:anyURI ] .
 
 # Taxonomy shapes
 
@@ -305,6 +306,21 @@ shape:Product a sh:NodeShape ;
     sh:property [
         sh:path sl:listPrice ; sh:minCount 1 ; sh:maxCount 1 ;
         sh:datatype xsd:decimal ; sh:minExclusive 0
+    ] ;
+    # A rule about order lines. It hangs from the product because pyshacl parses a SPARQL rule
+    # again for each focus node, and there are 40 products for 60,000 lines. The value is the
+    # line at fault. The casts keep an ill-formed number out of the multiplication, where rdflib
+    # raises on one: the rules of its own property report it.
+    sh:sparql [
+        sh:message "The amount of an order line must be its bags times its unit price." ;
+        sh:prefixes <https://semantic-lab.example/shapes> ;
+        sh:select """
+            SELECT $this ?value
+            WHERE {
+                ?value sl:sells $this ; sl:bags ?bags ; sl:unitPrice ?price ; sl:amount ?amount .
+                FILTER (?amount != xsd:decimal(?bags) * xsd:decimal(?price))
+            }
+        """
     ] .
 
 shape:Blend a sh:NodeShape ;

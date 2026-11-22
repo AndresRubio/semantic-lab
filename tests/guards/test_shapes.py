@@ -31,6 +31,7 @@ PREFIXES = f"""@prefix owl: <http://www.w3.org/2002/07/owl#> .
 """
 LABELS = '"{0}"@en, "{0}"@es'
 DECIMAL = URIRef("http://www.w3.org/2001/XMLSchema#decimal")
+INTEGER = URIRef("http://www.w3.org/2001/XMLSchema#integer")
 
 
 def concept(name: str, extra: str = "", scheme: str = "t") -> str:
@@ -399,3 +400,28 @@ def test_an_ill_typed_share_is_an_ontology_error_and_no_raw_exception(
     data_faults.put(graph, component, "share", Literal("abc", datatype=DECIMAL))
     with pytest.raises(OntologyError, match=r"^validation: [^\n]+$"):
         validate(graph, shapes, ontology_rdf)
+
+
+@pytest.mark.parametrize(
+    ("name", "datatype", "bound"),
+    [
+        ("bags", INTEGER, "MinInclusive"),
+        ("unitPrice", DECIMAL, "MinExclusive"),
+        ("amount", DECIMAL, "MinExclusive"),
+    ],
+)
+def test_an_ill_typed_number_of_an_order_line_breaks_the_rules_of_its_property_alone(
+    name: str,
+    datatype: URIRef,
+    bound: str,
+    fault_graph: Graph,
+    data_shapes: Graph,
+    ontology_rdf: Graph,
+) -> None:
+    graph = data_faults.copy(fault_graph)
+    line = data_faults.first(graph, "OrderLine")
+    data_faults.put(graph, line, name, Literal("abc", datatype=datatype))
+    found = data_faults.violations(graph, data_shapes, ontology_rdf)
+    assert sorted(found.elements()) == sorted(
+        [data_faults.hit(line, "Datatype", name), data_faults.hit(line, bound, name)]
+    )

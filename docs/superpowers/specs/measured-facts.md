@@ -178,18 +178,34 @@ the real shapes, which take about two minutes. No test runs `--full`. The `full`
 it on every pull request. Run by hand on 2026-11-19 on `main` at `f58fbf8`, it conformed on the
 666,536 triples.
 
-Measured on 2026-11-19, against the files as they are on the branch `retro-guards`:
+Measured on the branch `retro-guards`, on 2026-11-19 before the rule about an order line's
+amount and on 2026-11-22 with it. Each figure says which:
 
-- `python -m tests.support.mutate_shapes` removed each of the 313 rules of the data shapes in
-  turn, and a fault of `tests/support/data_faults.py` noticed every one. Twelve of the rules are
-  a shape's `sh:closed`, which leaves together with its `sh:ignoredProperties`, because pyshacl
-  refuses the second without the first. The run took 8 minutes 38 seconds of wall time on ten cores.
-- Exchanging the Postgres targets of two properties gives 1,225 mappings. The mapping check
-  refuses 1,191 of them, the export refuses 5, and the data shapes report 24, one of them only
-  on the first 200 orders and the rest already on three. No check notices the other 5:
-  `amount` with `unitPrice`, `bags` with `lineNo`, `city` with `country`, `destinationPort`
-  with `originPort`, and `pricePerKg` with `weightKg`. The generator sets an order line's amount
-  to its bags times its unit price, and no shape states that.
+- `python -m tests.support.mutate_shapes` removes each rule of the data shapes in turn. On
+  2026-11-22 there were 314 rules, a fault of `tests/support/data_faults.py` noticed every one,
+  and the run took 11 minutes 40 seconds of wall time on ten cores. Twelve of the rules are a
+  shape's `sh:closed`, which leaves together with its `sh:ignoredProperties`, because pyshacl
+  refuses the second without the first. On 2026-11-19 the 313 rules took 8 minutes 38 seconds.
+  The fault sample keeps all 40 products and the amount rule runs once for each, so one
+  validation of that sample takes 0.50 s where it took 0.31 s.
+- Exchanging the Postgres targets of two properties gives 1,225 mappings. On 2026-11-22 the
+  mapping check refuses 1,191 of them, the export refuses 5, and the data shapes report 26, all
+  of them already on three orders. No check notices the other 3: `city` with `country`,
+  `destinationPort` with `originPort`, and `pricePerKg` with `weightKg`. On 2026-11-19 the data
+  shapes reported 24, one of them only on the first 200 orders, and 5 went unnoticed: those
+  three, `amount` with `unitPrice`, and `bags` with `lineNo`.
 - Removing any one of the 136 lines of `mapping.yaml` that hold content is refused: 134 times by
   the reader and twice by the mapping check. Writing any one of them twice is refused by the
   reader all 136 times.
+- pyshacl runs a SPARQL rule once for each focus node of its shape, and rdflib parses the
+  rule's text again each time. Under a profiler, the 891 such queries of the first 200 orders
+  spent 12.2 of their 14.5 seconds in the parser. With the amount rule on `shape:OrderLine`,
+  whose focus nodes are the 60,000 order lines, the data shapes took 7.1 s on the first 200
+  orders against 2.3 s without the rule, 82.5 s on the first 3,000 against 17.5 s, and `--full`
+  took 14 minutes 32 seconds while the mutation tool ran beside it. Two variants were timed
+  alone on the 666,094 exported triples: hung from `shape:Order`, reaching the lines through
+  `sl:lineOf`, the rule took 144.9 s for the 20,000 orders, and hung from `shape:Product`,
+  reaching them through `sl:sells`, it took 11.3 s for the 40 products. Each named the line of
+  an amount raised by a cent. The rule hangs from the products. With it there, on 2026-11-22,
+  the data shapes took 2.4 s on the first 200 orders and 17.8 s on the first 3,000, and
+  `--full` conformed in 2 minutes 2 seconds.

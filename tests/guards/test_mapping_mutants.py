@@ -34,8 +34,6 @@ EDITED = [n for n, line in enumerate(LINES) if line.strip() and not line.lstrip(
 # holds the same type on the same table, and no shape relates the two. A pair leaves this set
 # when a rule that tells its two properties apart is added.
 UNNOTICED = {
-    frozenset({"amount", "unitPrice"}),
-    frozenset({"bags", "lineNo"}),
     frozenset({"city", "country"}),
     frozenset({"destinationPort", "originPort"}),
     frozenset({"pricePerKg", "weightKg"}),

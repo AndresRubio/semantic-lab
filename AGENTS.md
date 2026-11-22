@@ -50,7 +50,7 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
 - `uv run pytest -n auto -m "not db and not model"` [read-only]: the offline suite.
 - `uv run python -m tests.support.mutate_shapes` [read-only]: takes each rule out of the data
   shapes in turn and names the ones no fault of `tests/support/data_faults.py` notices. Run it
-  after a change to the data shapes. It takes about nine minutes on ten cores, so it is no part
+  after a change to the data shapes. It takes about twelve minutes on ten cores, so it is no part
   of the suite. It exits 0 when every rule is caught, 1 when one survives, and 2 when the
   shapes as they are already fail a check.
 - `uv run pytest -m db` [writes]: starts its own stack under the project name

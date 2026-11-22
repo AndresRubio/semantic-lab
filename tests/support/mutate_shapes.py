@@ -4,7 +4,7 @@
 
 It exits 0 when every rule is caught, 1 when one survives, and 2 when the shapes as they are
 already fail a check, which would prove nothing. Any other error ends the run with its
-traceback. It takes about nine minutes on ten cores, so it is a tool to run after a change to
+traceback. It takes about twelve minutes on ten cores, so it is a tool to run after a change to
 the data shapes and no part of the suite.
 """
 
