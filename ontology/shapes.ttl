@@ -308,9 +308,9 @@ shape:Product a sh:NodeShape ;
         sh:datatype xsd:decimal ; sh:minExclusive 0
     ] ;
     # A rule about order lines. It hangs from the product because pyshacl parses a SPARQL rule
-    # again for each focus node, and there are 40 products for 60,000 lines. The value is the
-    # line at fault. The casts keep an ill-formed number out of the multiplication, where rdflib
-    # raises on one: the rules of its own property report it.
+    # again for each focus node, and the products are far fewer than the lines. The value is the
+    # line at fault. The cast is for a unit price such as "abc": rdflib raises on an ill-formed
+    # right-hand operand, and the cast leaves no row, so the datatype rule reports it alone.
     sh:sparql [
         sh:message "The amount of an order line must be its bags times its unit price." ;
         sh:prefixes <https://semantic-lab.example/shapes> ;
@@ -318,7 +318,7 @@ shape:Product a sh:NodeShape ;
             SELECT $this ?value
             WHERE {
                 ?value sl:sells $this ; sl:bags ?bags ; sl:unitPrice ?price ; sl:amount ?amount .
-                FILTER (?amount != xsd:decimal(?bags) * xsd:decimal(?price))
+                FILTER (?amount != ?bags * xsd:decimal(?price))
             }
         """
     ] .

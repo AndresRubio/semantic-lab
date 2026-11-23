@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 import pytest
 from rdflib import RDF, Graph, Literal, URIRef
@@ -425,3 +426,16 @@ def test_an_ill_typed_number_of_an_order_line_breaks_the_rules_of_its_property_a
     assert sorted(found.elements()) == sorted(
         [data_faults.hit(line, "Datatype", name), data_faults.hit(line, bound, name)]
     )
+
+
+def test_a_wrong_amount_is_reported_with_its_order_line_as_the_value(
+    fault_graph: Graph, data_shapes: Graph, ontology_rdf: Graph
+) -> None:
+    graph = data_faults.copy(fault_graph)
+    line = data_faults.first(graph, "OrderLine")
+    amount = data_faults.py(graph, line, "amount")
+    data_faults.put(graph, line, "amount", Literal(amount + Decimal("0.01")))
+    # The focus is the product the line sells, so the value alone says which line is wrong.
+    [found] = validate(graph, data_shapes, ontology_rdf)
+    assert found.value == str(line)
+    assert found.line().endswith(f"(value {line})")

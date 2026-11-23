@@ -178,8 +178,9 @@ the real shapes, which take about two minutes. No test runs `--full`. The `full`
 it on every pull request. Run by hand on 2026-11-19 on `main` at `f58fbf8`, it conformed on the
 666,536 triples.
 
-Measured on the branch `retro-guards`, on 2026-11-19 before the rule about an order line's
-amount and on 2026-11-22 with it. Each figure says which:
+Measured on the branch `retro-guards` in three sittings: on 2026-11-19 before the rule about an
+order line's amount existed, in the night of 2026-11-19 to 2026-11-20 with drafts of that rule
+in the working tree, and on 2026-11-22 with the rule as committed. Each figure says which:
 
 - `python -m tests.support.mutate_shapes` removes each rule of the data shapes in turn. On
   2026-11-22 there were 314 rules, a fault of `tests/support/data_faults.py` noticed every one,
@@ -198,14 +199,16 @@ amount and on 2026-11-22 with it. Each figure says which:
   the reader and twice by the mapping check. Writing any one of them twice is refused by the
   reader all 136 times.
 - pyshacl runs a SPARQL rule once for each focus node of its shape, and rdflib parses the
-  rule's text again each time. Under a profiler, the 891 such queries of the first 200 orders
-  spent 12.2 of their 14.5 seconds in the parser. With the amount rule on `shape:OrderLine`,
-  whose focus nodes are the 60,000 order lines, the data shapes took 7.1 s on the first 200
-  orders against 2.3 s without the rule, 82.5 s on the first 3,000 against 17.5 s, and `--full`
-  took 14 minutes 32 seconds while the mutation tool ran beside it. Two variants were timed
-  alone on the 666,094 exported triples: hung from `shape:Order`, reaching the lines through
-  `sl:lineOf`, the rule took 144.9 s for the 20,000 orders, and hung from `shape:Product`,
-  reaching them through `sl:sells`, it took 11.3 s for the 40 products. Each named the line of
-  an amount raised by a cent. The rule hangs from the products. With it there, on 2026-11-22,
-  the data shapes took 2.4 s on the first 200 orders and 17.8 s on the first 3,000, and
-  `--full` conformed in 2 minutes 2 seconds.
+  rule's text again each time. The figures up to the two variants are from the night of
+  2026-11-19 to 2026-11-20, with a draft of the amount rule on `shape:OrderLine`, whose focus
+  nodes are the 60,000 order lines. Under a profiler, the 891 such queries of the first 200
+  orders spent 12.2 of their 14.5 seconds in the parser. The data shapes took 7.1 s on the first
+  200 orders against 2.3 s without the rule, 82.5 s on the first 3,000 against 17.5 s, and
+  `--full` took 14 minutes 32 seconds while the mutation tool ran beside it: that placement was
+  never timed alone. Two variants were timed alone the same night, each as the only shape over
+  the 666,094 exported triples and in an earlier wording of the rule: hung from `shape:Order`,
+  reaching the lines through `sl:lineOf`, the rule took 144.9 s for the 20,000 orders, and hung
+  from `shape:Product`, reaching them through `sl:sells`, it took 11.3 s for the 40 products.
+  Each named the line of an amount raised by a cent. The rule hangs from the products. With it
+  there, on 2026-11-22, the data shapes took 2.4 s on the first 200 orders and 17.8 s on the
+  first 3,000, and `--full` conformed in 2 minutes 2 seconds.
