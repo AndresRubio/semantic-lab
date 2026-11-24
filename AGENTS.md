@@ -150,7 +150,8 @@ Other containers on this Mac, such as boe-agent's on 5433 and 5434, are not ours
 
 - Python 3.13, managed with `uv`. Never `pip`.
 - Every address, port and credential comes from the environment. No default lives in code.
-- Commit on a branch, one plain sentence as the message. Do not use `--no-verify`.
+- Commit on a branch. The message's first line is one plain sentence, and a body may follow
+  when the change needs its reasons told. Do not use `--no-verify`.
 - A pull request's description lists, under `Parked`, every review finding left unfixed, with
   one line on why. Working notes outside git are deleted after the merge, so a finding written
   only there is lost.

@@ -28,9 +28,8 @@ class _UniqueKeys(yaml.SafeLoader):
                 continue
             name, line = (key.tag, key.value), key.start_mark.line + 1
             if name in first:
-                raise MappingError(
-                    f"the key {key.value!r} appears twice, on lines {first[name]} and {line}"
-                )
+                where = f"line {line}" if first[name] == line else f"lines {first[name]} and {line}"
+                raise MappingError(f"the key {key.value!r} appears twice, on {where}")
             first[name] = line
         return super().construct_mapping(node, deep)
 

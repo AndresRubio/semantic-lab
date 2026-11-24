@@ -44,7 +44,7 @@ REFUSALS = {
     ),
     "a key of an entry twice": (
         document(classes="sl:A:\n  postgres: {table: farm, table: lot, key: [code]}\n"),
-        "the key 'table' appears twice, on lines 3 and 3",
+        "the key 'table' appears twice, on line 3",
     ),
     "a section twice": (
         "classes: {}\nproperties: {}\nclasses: {}\n",

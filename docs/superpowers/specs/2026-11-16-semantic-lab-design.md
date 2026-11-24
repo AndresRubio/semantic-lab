@@ -303,8 +303,8 @@ checks, the generator, the scorer, and the agent loop driven by a scripted model
 a list of tool calls. Tests marked `db` start Postgres, Neo4j and Cube and check the
 projection, the reference queries and that each reference Cube query gives the same numbers as
 its reference SQL. Tests marked `model` call Ollama and run only on the Mac. CI runs ruff,
-mypy, the offline suite and the `db` suite. It never runs `model`, because GitHub's runners
-have no Ollama.
+mypy, the offline suite and the `db` suite, and on a pull request it also runs the ontology
+command with `--full`. It never runs `model`, because GitHub's runners have no Ollama.
 
 ## Conventions
 

@@ -1,7 +1,9 @@
 """Mechanical edits of the repository's mapping: a check must refuse each one.
 
 A refusal is the reader's MappingError, a problem line of the mapping check, the export's
-MappingError or a violation of the data shapes, which is how the ontology command reports each.
+MappingError or a violation of the data shapes. The ontology command reports the same four on
+the 200 orders it exports. The fault sample is tried first because it is smaller, and the
+command never sees it, so an edit that only that sample refuses would pass the command.
 Any other exception fails the test, and so does a log line.
 """
 
