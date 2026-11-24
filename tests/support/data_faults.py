@@ -468,6 +468,14 @@ def a_batch_that_produced_less_than_its_lines_took(g: Graph) -> list[Hit]:
 
 
 @fault
+def an_order_line_whose_amount_is_not_its_bags_times_its_unit_price(g: Graph) -> list[Hit]:
+    line = first(g, "OrderLine")
+    put(g, line, "amount", Literal(py(g, line, "amount") + Decimal("0.01")))
+    # The rule hangs from the product the line sells: `ontology/shapes.ttl` says why.
+    return [hit(get(g, line, "sells"), "SPARQL")]
+
+
+@fault
 def a_single_lot_batch_with_a_second_component(g: Graph) -> list[Hit]:
     batch = batch_of(g, "SingleLotProduct")
     component = components_of(g, batch)[0]

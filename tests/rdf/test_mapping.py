@@ -40,7 +40,7 @@ REFUSALS = {
     "top level is a list": ("- classes\n- properties\n", "top level"),
     "a term twice": (
         document(properties=GOOD_PROPERTY + GOOD_PROPERTY),
-        "the key 'sl:p' appears twice, on line 7",
+        "the key 'sl:p' appears twice, on lines 5 and 7",
     ),
     "a key of an entry twice": (
         document(classes="sl:A:\n  postgres: {table: farm, table: lot, key: [code]}\n"),
@@ -48,7 +48,7 @@ REFUSALS = {
     ),
     "a section twice": (
         "classes: {}\nproperties: {}\nclasses: {}\n",
-        "the key 'classes' appears twice, on line 3",
+        "the key 'classes' appears twice, on lines 1 and 3",
     ),
     "no properties key": ("classes: {}\n", "the top level has no properties"),
     "no classes key": ("properties: {}\n", "the top level has no classes"),

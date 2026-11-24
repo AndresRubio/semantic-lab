@@ -48,6 +48,11 @@ or volumes. `[read-only]` means it leaves the working tree and the Docker state 
   the hash of the working tree, so a second run on an unchanged tree ends at once, and
   `--force` runs the checks again. The record lives in the git directory.
 - `uv run pytest -n auto -m "not db and not model"` [read-only]: the offline suite.
+- `uv run python -m tests.support.mutate_shapes` [read-only]: takes each rule out of the data
+  shapes in turn and names the ones no fault of `tests/support/data_faults.py` notices. Run it
+  after a change to the data shapes. It takes about twelve minutes on ten cores, so it is no part
+  of the suite. It exits 0 when every rule is caught, 1 when one survives, and 2 when the
+  shapes as they are already fail a check.
 - `uv run pytest -m db` [writes]: starts its own stack under the project name
   `semantic-lab-test` on ports 5441, 7475, 7688 and 4001, and removes it with its volumes
   when it ends. It reads `tests/stack.env` and never needs `.env`. Do not add `-n`. Only one `db`
@@ -133,6 +138,9 @@ Work up the ladder as the change grows:
 4. Before a pull request, `uv run pytest -n auto -m "not db and not model"` and
    `uv run pytest -m db`.
 
+CI runs one check the ladder leaves out: its `full` job runs the ontology command with `--full`
+on every pull request, because the suite validates only the first 200 orders.
+
 The test stack and the development stack together need about twice the memory of one
 (about 1.7 GiB for the development stack with no data loaded, see the measured facts), so
 stop the development stack with `docker compose down` first if the machine is tight.
@@ -142,4 +150,8 @@ Other containers on this Mac, such as boe-agent's on 5433 and 5434, are not ours
 
 - Python 3.13, managed with `uv`. Never `pip`.
 - Every address, port and credential comes from the environment. No default lives in code.
-- Commit on a branch, one plain sentence as the message. Do not use `--no-verify`.
+- Commit on a branch. The message's first line is one plain sentence, and a body may follow
+  when the change needs its reasons told. Do not use `--no-verify`.
+- A pull request's description lists, under `Parked`, every review finding left unfixed, with
+  one line on why. Working notes outside git are deleted after the merge, so a finding written
+  only there is lost.

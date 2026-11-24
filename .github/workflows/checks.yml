@@ -18,6 +18,7 @@ concurrency:
 # move. Dependabot (.github/dependabot.yml) proposes new ones weekly, and
 # tests/guards/test_workflows.py checks the pinning. The `static` and `offline` jobs run the
 # same commands as scripts/check.sh. The tests marked `model` need Ollama and never run here.
+# The `full` job is not in scripts/check.sh, because it takes minutes.
 jobs:
   static:
     runs-on: ubuntu-latest
@@ -54,3 +55,16 @@ jobs:
           version: latest-known
       - run: uv sync --extra dev --locked
       - run: uv run pytest -m db
+
+  # The offline suite validates the first 200 orders against the data shapes. This job exports
+  # and validates every row, so a rule that only a later row breaks fails here.
+  full:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: latest-known
+      - run: uv sync --extra dev --locked
+      - run: uv run python -m semantic_lab.commands.ontology --full
